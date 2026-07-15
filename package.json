@@ -1,0 +1,41 @@
+{
+  "name": "intern-dashboard",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "db:push": "prisma db push",
+    "db:seed": "node prisma/seed.mjs",
+    "db:reset": "prisma db push --force-reset && node prisma/seed.mjs",
+    "setup": "prisma generate && prisma db push && node prisma/seed.mjs",
+    "postinstall": "prisma generate"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.2.1",
+    "@supabase/supabase-js": "^2.110.0",
+    "bcryptjs": "^2.4.3",
+    "jose": "^5.9.6",
+    "next": "^15.1.4",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^22.10.5",
+    "@types/react": "^19.0.4",
+    "@types/react-dom": "^19.0.2",
+    "prisma": "^6.2.1",
+    "typescript": "^5.7.3"
+  },
+  "allowScripts": {
+    "prisma@6.19.3": true,
+    "@prisma/client@6.19.3": true,
+    "@prisma/engines@6.19.3": true,
+    "sharp@0.34.5": true,
+    "@supabase/supabase-js@2.110.0": true
+  }
+}

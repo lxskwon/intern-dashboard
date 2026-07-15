@@ -1,0 +1,177 @@
+// Intern Dashboard data model.
+// SQLite has no native enums, so enum-like fields are stored as strings and
+// validated in the application layer (see src/lib/constants.ts).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// Everyone in the app is an intern who manages their own card. There are no
+// roles. Mentor is just a free-text name the intern types in.
+model User {
+  id           String  @id @default(cuid())
+  email        String  @unique
+  passwordHash String
+  name         String
+  kind         String  @default("INTERN") // INTERN | STAFF
+  team         String?
+  photoUrl     String?
+  mentorName   String?
+
+  startDate DateTime?
+  endDate   DateTime?
+
+  // When the intern last viewed the comments on their own card (for the
+  // "new comments" indicator).
+  commentsSeenAt DateTime?
+
+  assignments      Assignment[]     @relation("InternAssignments")
+  assignmentsBy    Assignment[]     @relation("AssignedBy")
+  unavailabilities Unavailability[]
+  entriesAuthored  TaskEntry[]      @relation("EntryAuthor")
+  workSchedules    WorkSchedule[]
+  comments         Comment[]
+  messages         Message[]
+  menteeClaims     MentorMentee[]
+  passwordResets   PasswordReset[]
+
+  createdAt   DateTime @default(now())
+  lastUpdated DateTime @updatedAt
+}
+
+// Single-use, time-limited password reset tokens (only the hash is stored).
+model PasswordReset {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+}
+
+// A mentor claiming an intern by name (works even before the intern signs up).
+// The link is resolved by matching this internName to an intern account's name.
+model MentorMentee {
+  id         String   @id @default(cuid())
+  mentorId   String
+  mentor     User     @relation(fields: [mentorId], references: [id], onDelete: Cascade)
+  internName String
+  createdAt  DateTime @default(now())
+}
+
+// Public feedback left on an intern's card. Visible to everyone.
+model Comment {
+  id         String   @id @default(cuid())
+  internId   String
+  intern     User     @relation(fields: [internId], references: [id], onDelete: Cascade)
+  authorId   String
+  authorName String
+  body       String
+  createdAt  DateTime @default(now())
+}
+
+// Private 1:1 message tied to an intern's card. A thread is (internId, partnerId)
+// where partnerId is the non-intern participant. Only the intern and that
+// partner can see the thread.
+model Message {
+  id          String   @id @default(cuid())
+  internId    String
+  intern      User     @relation(fields: [internId], references: [id], onDelete: Cascade)
+  partnerId   String
+  partnerName String
+  authorId    String
+  body        String
+  readAt      DateTime?
+  createdAt   DateTime @default(now())
+}
+
+// One working-hours block: a set of weekdays with a start/end time. An intern
+// can have several (e.g. Mon 10–19, Tue–Fri 9–18). Drives 근무중 / 퇴근.
+model WorkSchedule {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  days      String   // comma-separated weekday numbers (0=Sun)
+  startTime String   // "HH:MM"
+  endTime   String   // "HH:MM"
+  createdAt DateTime @default(now())
+}
+
+// A period during which a person is out of office (개인 사정으로 부재중).
+model Unavailability {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  startDate DateTime
+  endDate   DateTime
+  reason    String?
+  createdAt DateTime @default(now())
+}
+
+// A shared project several interns' tasks can belong to.
+model Project {
+  id          String       @id @default(cuid())
+  name        String
+  description String?
+  lead        String? // 담당자 이름
+  startDate   DateTime?
+  dueDate     DateTime?
+  createdAt   DateTime     @default(now())
+  tasks       Assignment[]
+}
+
+model Assignment {
+  id          String  @id @default(cuid())
+  title       String
+  description String?
+  link        String?
+  status      String  @default("ACTIVE") // ACTIVE | COMPLETED
+
+  internId String
+  intern   User   @relation("InternAssignments", fields: [internId], references: [id], onDelete: Cascade)
+
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  assignedById String?
+  assignedBy   User?   @relation("AssignedBy", fields: [assignedById], references: [id], onDelete: SetNull)
+
+  startDate        DateTime?
+  expectedDoneDate DateTime?
+  completedAt      DateTime?
+  createdAt        DateTime  @default(now())
+
+  entries TaskEntry[]
+}
+
+// A per-day journal entry an intern adds to a task (what they did that day).
+model TaskEntry {
+  id           String   @id @default(cuid())
+  assignmentId String
+  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  authorId     String?
+  author       User?    @relation("EntryAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  entryDate    DateTime
+  body         String?
+  createdAt    DateTime @default(now())
+
+  attachments Attachment[]
+}
+
+// A file, image, or link attached to a task entry.
+model Attachment {
+  id        String   @id @default(cuid())
+  entryId   String
+  entry     TaskEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  kind      String   // IMAGE | FILE | LINK
+  url       String
+  name      String?
+  createdAt DateTime @default(now())
+}
