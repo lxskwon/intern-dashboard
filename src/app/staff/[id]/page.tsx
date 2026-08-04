@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { getCurrentUser, hasActiveMentees } from "@/lib/session";
 import { isStaff, isAdminOrBoss, roleLabel } from "@/lib/permissions";
 import { getT } from "@/lib/i18n-server";
+import { resolveBack } from "@/lib/backlink";
 import { isEnded, isCurrentlyAway, seoulTodayUTCDate } from "@/lib/format";
 import { todayAdjustBounds } from "@/lib/constants";
 import { Avatar } from "@/components/Avatar";
@@ -14,7 +15,13 @@ export const dynamic = "force-dynamic";
 
 /** A staff member's profile: tier, 본부, and their assigned interns. Admins get
  *  tier/status controls here too. Visible to any logged-in staff member. */
-export default async function StaffPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function StaffPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const viewer = await getCurrentUser();
   if (!viewer) redirect("/login");
   if (!isStaff(viewer)) redirect("/");
@@ -22,6 +29,9 @@ export default async function StaffPage({ params }: { params: Promise<{ id: stri
   const staff = await prisma.user.findUnique({ where: { id } });
   if (!staff || staff.kind !== "STAFF") notFound();
   const t = await getT();
+  const sp = await searchParams;
+  const backParam = Array.isArray(sp.back) ? sp.back[0] : sp.back;
+  const back = resolveBack(t, backParam, { href: "/members", label: `← ${t("구성원 관리")}` });
 
   const isMentor = await hasActiveMentees(staff.id, staff.name);
   const isSelf = viewer.id === staff.id;
@@ -76,7 +86,7 @@ export default async function StaffPage({ params }: { params: Promise<{ id: stri
   return (
     <main className="container">
       <p style={{ marginTop: 0 }}>
-        <Link href="/members">← {t("구성원 관리")}</Link>
+        <Link href={back.href}>{back.label}</Link>
       </p>
 
       <section className="hero" style={{ borderTop: `5px solid ${heroBorder}` }}>

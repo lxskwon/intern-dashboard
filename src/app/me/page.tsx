@@ -79,7 +79,7 @@ export default async function MePage() {
             {pending.periods.map((m) => (
               <div key={`p-${m.id}`} className="approval-row">
                 <div className="mentee-info">
-                  <Link href={`/interns/${m.id}`} className="mentee-name">
+                  <Link href={`/interns/${m.id}?back=${encodeURIComponent("/me")}`} className="mentee-name">
                     {m.name}
                   </Link>
                   <span className="meta-line">
@@ -95,7 +95,7 @@ export default async function MePage() {
             {pending.schedules.map((s) => (
               <div key={`s-${s.id}`} className="approval-row">
                 <div className="mentee-info">
-                  <Link href={`/interns/${s.user.id}`} className="mentee-name">
+                  <Link href={`/interns/${s.user.id}?back=${encodeURIComponent("/me")}`} className="mentee-name">
                     {s.user.name}
                   </Link>
                   <span className="meta-line">
@@ -111,7 +111,7 @@ export default async function MePage() {
             {pending.absences.map((u) => (
               <div key={`a-${u.id}`} className="approval-row">
                 <div className="mentee-info">
-                  <Link href={`/interns/${u.user.id}`} className="mentee-name">
+                  <Link href={`/interns/${u.user.id}?back=${encodeURIComponent("/me")}`} className="mentee-name">
                     {u.user.name}
                   </Link>
                   <span className="meta-line">
@@ -144,7 +144,7 @@ export default async function MePage() {
             {mentees.map((m) => {
               const ended = isEnded(m.endDate);
               return (
-                <Link key={m.id} href={`/interns/${m.id}`} className="mentee-row">
+                <Link key={m.id} href={`/interns/${m.id}?back=${encodeURIComponent("/me")}`} className="mentee-row">
                   <Avatar name={m.name} photoUrl={m.photoUrl} size={36} />
                   <div className="mentee-info">
                     <span className="mentee-name">{m.name}</span>

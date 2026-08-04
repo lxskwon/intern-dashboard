@@ -59,7 +59,7 @@ function TaskChips({
   return (
     <div className="task-chip-list">
       {shown.map((task) => (
-        <Link key={task.id} href={`/tasks/${task.id}`} className="task-chip">
+        <Link key={task.id} href={`/tasks/${task.id}?back=${encodeURIComponent("/")}`} className="task-chip">
           <span className="task-chip-left">
             {task.dday && (
               <span

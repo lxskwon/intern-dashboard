@@ -4,16 +4,20 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useCallback } from "react";
 import { useT } from "./LangProvider";
 
-/** Filter bar for 모든 업무 — narrow the task list by 담당 인턴 or by 본부 (team).
+/** Filter bar for 모든 업무 — narrow the task list by 기수, 담당 인턴 or 본부 (team).
  *  Team filtering matches any task whose intern belongs to that 본부. */
 export function TaskFilters({
+  cohorts,
   interns,
   teams,
+  selectedCohort,
   selectedIntern,
   selectedTeam,
 }: {
+  cohorts: { id: string; label: string }[];
   interns: { id: string; name: string }[];
   teams: string[];
+  selectedCohort: string;
   selectedIntern: string;
   selectedTeam: string;
 }) {
@@ -33,10 +37,23 @@ export function TaskFilters({
     [params, pathname, router]
   );
 
-  const hasFilter = selectedIntern !== "" || selectedTeam !== "";
+  const hasFilter = selectedCohort !== "" || selectedIntern !== "" || selectedTeam !== "";
 
   return (
     <div className="toolbar">
+      {cohorts.length > 0 && (
+        <div className="field">
+          <label>{t("기수")}</label>
+          <select value={selectedCohort} onChange={(e) => setParam("cohort", e.currentTarget.value)}>
+            <option value="">{t("전체 기수")}</option>
+            {cohorts.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
       <div className="field">
         <label>{t("담당 인턴")}</label>
         <select value={selectedIntern} onChange={(e) => setParam("intern", e.currentTarget.value)}>

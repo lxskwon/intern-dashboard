@@ -183,6 +183,25 @@ a:hover {
   text-align: right;
   white-space: nowrap;
 }
+/* Completed tasks: slightly recede, with a green "완료" tint chip. */
+.alltask-row.done {
+  background: #fafafa;
+}
+.alltask-row.done .alltask-title {
+  color: var(--muted);
+  font-weight: 500;
+}
+.done-pill {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: #dcfce7;
+  color: #15803d;
+}
 
 /* ---- admin dropdown (topbar) ---- */
 .admin-menu {

@@ -100,7 +100,7 @@ export default async function AssignPage() {
               <div key={r.internName} className="cohort-row">
                 <div className="mentee-info" style={{ width: "100%" }}>
                   {r.internId ? (
-                    <Link href={`/interns/${r.internId}`} className="mentee-name">
+                    <Link href={`/interns/${r.internId}?back=${encodeURIComponent("/assign")}`} className="mentee-name">
                       {r.internName}
                     </Link>
                   ) : (

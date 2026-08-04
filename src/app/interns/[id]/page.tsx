@@ -5,6 +5,7 @@ import { getViewer, isFrozenIntern } from "@/lib/session";
 import { canEdit, isAdminOrBoss } from "@/lib/permissions";
 import { signedResumeUrl } from "@/lib/uploads";
 import { getT, getLocale } from "@/lib/i18n-server";
+import { resolveBack } from "@/lib/backlink";
 import { unreadMessageCount } from "@/lib/notifications";
 import {
   fmtDate as fmtDateI,
@@ -51,8 +52,10 @@ export const dynamic = "force-dynamic";
 
 export default async function InternDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const user = await getViewer();
   if (!user) redirect("/login");
@@ -62,6 +65,12 @@ export default async function InternDetailPage({
   const fmtShort = (d: Date | string | null | undefined) => fmtShortI(d, locale);
 
   const { id } = await params;
+  const sp = await searchParams;
+  const backParam = Array.isArray(sp.back) ? sp.back[0] : sp.back;
+  const back = resolveBack(t, backParam, {
+    href: "/",
+    label: `← ${t("대시보드로 돌아가기")}`,
+  });
   const intern = await prisma.user.findUnique({
     where: { id },
     include: {
@@ -166,7 +175,7 @@ export default async function InternDetailPage({
     <main className={`container${ended ? " is-ended" : ""}`}>
       {!user.isGuest && <MarkRead internId={intern.id} />}
       <p style={{ marginTop: 0 }}>
-        <Link href="/">← {t("대시보드로 돌아가기")}</Link>
+        <Link href={back.href}>{back.label}</Link>
       </p>
 
       <section className="hero" style={{ borderTop: `5px solid ${heroBorder}` }}>

@@ -51,7 +51,7 @@ export default async function ApprovalsPage() {
             {absences.map((u) => (
               <div key={u.id} className="approval-row">
                 <div className="mentee-info">
-                  <Link href={`/interns/${u.user.id}`} className="mentee-name">
+                  <Link href={`/interns/${u.user.id}?back=${encodeURIComponent("/approvals")}`} className="mentee-name">
                     {u.user.name}
                   </Link>
                   <span className="meta-line">
@@ -83,7 +83,7 @@ export default async function ApprovalsPage() {
             {periods.map((m) => (
               <div key={`p-${m.id}`} className="approval-row">
                 <div className="mentee-info">
-                  <Link href={`/interns/${m.id}`} className="mentee-name">
+                  <Link href={`/interns/${m.id}?back=${encodeURIComponent("/approvals")}`} className="mentee-name">
                     {m.name}
                   </Link>
                   <span className="meta-line">
@@ -99,7 +99,7 @@ export default async function ApprovalsPage() {
             {schedules.map((s) => (
               <div key={`s-${s.id}`} className="approval-row">
                 <div className="mentee-info">
-                  <Link href={`/interns/${s.user.id}`} className="mentee-name">
+                  <Link href={`/interns/${s.user.id}?back=${encodeURIComponent("/approvals")}`} className="mentee-name">
                     {s.user.name}
                   </Link>
                   <span className="meta-line">

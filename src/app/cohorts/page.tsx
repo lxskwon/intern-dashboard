@@ -58,7 +58,7 @@ export default async function CohortsPage() {
                   {c.interns.length > 0 ? (
                     <div className="cohort-members">
                       {c.interns.map((i) => (
-                        <Link key={i.id} href={`/interns/${i.id}`} className="cohort-member">
+                        <Link key={i.id} href={`/interns/${i.id}?back=${encodeURIComponent("/cohorts")}`} className="cohort-member">
                           {i.name}
                         </Link>
                       ))}

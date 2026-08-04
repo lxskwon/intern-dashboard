@@ -81,13 +81,13 @@ export default async function ActivityPage() {
                   <Avatar name={e.intern.name} photoUrl={e.intern.photoUrl} size={36} />
                   <div className="feed-body">
                     <div className="feed-head">
-                      <Link href={`/interns/${e.intern.id}`} className="feed-task-link">
+                      <Link href={`/interns/${e.intern.id}?back=${encodeURIComponent("/activity")}`} className="feed-task-link">
                         <strong>{e.intern.name}</strong>
                       </Link>
                       {e.assignment && (
                         <>
                           <span className="muted"> · </span>
-                          <Link href={`/tasks/${e.assignment.id}`} className="feed-task-link">
+                          <Link href={`/tasks/${e.assignment.id}?back=${encodeURIComponent("/activity")}`} className="feed-task-link">
                             📌 {e.assignment.title}
                           </Link>
                         </>

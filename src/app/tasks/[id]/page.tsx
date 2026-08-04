@@ -9,6 +9,7 @@ import { relatedScore } from "@/lib/text";
 import { TaskEditForm } from "./TaskEditForm";
 import { JournalEntry } from "./JournalEntry";
 import { getT, getLocale } from "@/lib/i18n-server";
+import { resolveBack } from "@/lib/backlink";
 
 export const dynamic = "force-dynamic";
 
@@ -20,10 +21,15 @@ type EntryWithRel = {
   attachments: { id: string; kind: string; url: string; name: string | null }[];
 };
 
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
+const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? "";
+
 export default async function TaskPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: SearchParams;
 }) {
   const user = await getViewer();
   if (!user) redirect("/login");
@@ -32,6 +38,8 @@ export default async function TaskPage({
   const fmtDate = (d: Date | string | null | undefined) => fmtDateI(d, locale);
 
   const { id } = await params;
+  const sp = await searchParams;
+  const back = one(sp.back); // where the user came from (path + query)
   const task = await prisma.assignment.findUnique({
     where: { id },
     include: {
@@ -54,6 +62,13 @@ export default async function TaskPage({
   const mine = canEdit(user, task.internId);
   const done = task.status === "COMPLETED";
   const givenDate = task.startDate ?? task.createdAt;
+
+  // Context-aware back link — return to wherever the user came from. Defaults to
+  // the intern's card (the natural home for a task).
+  const { href: backHref, label: backLabel } = resolveBack(t, back, {
+    href: `/interns/${task.internId}`,
+    label: t("← {name} 카드로", { name: task.intern.name }),
+  });
 
   // Soft discovery: similar-titled tasks by other interns.
   const others = await prisma.assignment.findMany({
@@ -81,7 +96,7 @@ export default async function TaskPage({
   return (
     <main className="container">
       <p style={{ marginTop: 0 }}>
-        <Link href={`/interns/${task.internId}`}>{t("← {name} 카드로", { name: task.intern.name })}</Link>
+        <Link href={backHref}>{backLabel}</Link>
       </p>
 
       <section className="task-hero">

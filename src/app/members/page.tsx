@@ -146,7 +146,11 @@ export default async function MembersPage({
     <div className={`member-row${m.withdrawnAt ? " is-withdrawn" : ""}${internEnded ? " is-ended" : ""}`}>
       <div className="mentee-info" style={{ minWidth: 0 }}>
         <span className="mentee-name">
-          <Link href={m.kind === "INTERN" ? `/interns/${m.id}` : `/staff/${m.id}`}>{m.name}</Link>
+          <Link
+            href={`${m.kind === "INTERN" ? `/interns/${m.id}` : `/staff/${m.id}`}?back=${encodeURIComponent("/members")}`}
+          >
+            {m.name}
+          </Link>
           <span className="role-pill" style={{ marginLeft: 8 }}>
             {m.kind === "INTERN"
               ? m.internLead && !internEnded

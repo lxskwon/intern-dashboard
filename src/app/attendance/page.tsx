@@ -157,7 +157,7 @@ export default async function AttendancePage() {
             <details key={i.id} className="card attend-item">
               <summary className="attend-summary">
                 <span className="attend-name">
-                  <Link href={`/interns/${i.id}`}>{i.name}</Link>
+                  <Link href={`/interns/${i.id}?back=${encodeURIComponent("/attendance")}`}>{i.name}</Link>
                   {i.teams.length > 0 && <span className="attend-teams">{i.teams.join(" · ")}</span>}
                 </span>
                 <span className={`attend-rate${rate !== null && rate < 70 ? " low" : ""}`}>
