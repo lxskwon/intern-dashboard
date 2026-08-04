@@ -650,6 +650,7 @@ select {
   border-radius: 8px;
   overflow: hidden;
   margin-right: 12px;
+  flex-shrink: 0; /* keep a fixed size even when the topbar is tight (English mode) */
 }
 .lang-toggle button {
   border: none;
@@ -657,10 +658,22 @@ select {
   color: var(--muted);
   font-size: 13px;
   font-weight: 700;
-  padding: 5px 11px;
+  width: 38px; /* equal-width segments so neither side looks squished */
+  flex-shrink: 0; /* don't let flex compression collapse the fixed width */
+  padding: 5px 0;
+  text-align: center;
   cursor: pointer;
   font-family: inherit;
-  line-height: 1.4;
+  line-height: 18px; /* fixed so a larger 'A' doesn't change button height */
+}
+/* The Latin 'A' renders shorter than 한 at the same size — bump it up to match
+   the 한 glyph height; a lighter weight keeps its ink from looking heavier than
+   한, and a hair of left offset optically centers it. Fixed line-height above
+   keeps the button box (and thus the whole toggle) the same size in both modes. */
+.lang-toggle button:last-child {
+  font-size: 16px;
+  font-weight: 600;
+  text-indent: -1.5px; /* nudge only the glyph left — not the box, so blue fills fully */
 }
 .lang-toggle button + button {
   border-left: 1px solid var(--border);
