@@ -2,8 +2,9 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { getViewer } from "@/lib/session";
-import { fmtDate, toDateInput, ddayInfo } from "@/lib/format";
+import { fmtDate as fmtDateI, toDateInput, ddayInfo } from "@/lib/format";
 import { Avatar } from "@/components/Avatar";
+import { getT, getLocale } from "@/lib/i18n-server";
 import { ProjectEditForm } from "./ProjectEditForm";
 
 export const dynamic = "force-dynamic";
@@ -15,6 +16,9 @@ export default async function ProjectPage({
 }) {
   const user = await getViewer();
   if (!user) redirect("/login");
+  const t = await getT();
+  const locale = await getLocale();
+  const fmtDate = (d: Date | string | null | undefined) => fmtDateI(d, locale);
 
   const { id } = await params;
   const project = await prisma.project.findUnique({
@@ -33,43 +37,43 @@ export default async function ProjectPage({
     string,
     { intern: (typeof project.tasks)[number]["intern"]; tasks: typeof project.tasks }
   >();
-  for (const t of project.tasks) {
-    const k = t.intern.id;
-    if (!byIntern.has(k)) byIntern.set(k, { intern: t.intern, tasks: [] });
-    byIntern.get(k)!.tasks.push(t);
+  for (const task of project.tasks) {
+    const k = task.intern.id;
+    if (!byIntern.has(k)) byIntern.set(k, { intern: task.intern, tasks: [] });
+    byIntern.get(k)!.tasks.push(task);
   }
   const members = [...byIntern.values()];
 
   return (
     <main className="container">
       <p style={{ marginTop: 0 }}>
-        <Link href="/projects">← 프로젝트 목록</Link>
+        <Link href="/projects">{t("← 프로젝트 목록")}</Link>
       </p>
       <h1 className="page-title" style={{ marginBottom: 2 }}>
         📁 {project.name}
       </h1>
       <p className="page-sub">
-        참여 인턴 {members.length}명 · 업무 {project.tasks.length}개
+        {t("참여 인턴 {n}명 · 업무 {m}개", { n: members.length, m: project.tasks.length })}
       </p>
 
       {/* Project details */}
       <div className="card card-pad section">
         <div className="hero-facts">
           <span className="fact">
-            <span className="fact-k">담당자</span>
+            <span className="fact-k">{t("담당자")}</span>
             <span className="fact-v">
-              {project.lead ? project.lead : <span className="muted">미지정</span>}
+              {project.lead ? project.lead : <span className="muted">{t("미지정")}</span>}
             </span>
           </span>
           <span className="fact">
-            <span className="fact-k">기간</span>
+            <span className="fact-k">{t("기간")}</span>
             <span className="fact-v">
               {project.startDate || project.dueDate ? (
                 <>
                   {fmtDate(project.startDate)} – {fmtDate(project.dueDate)}
                 </>
               ) : (
-                <span className="muted">미설정</span>
+                <span className="muted">{t("미설정")}</span>
               )}
             </span>
           </span>
@@ -77,7 +81,7 @@ export default async function ProjectPage({
             const d = ddayInfo(project.dueDate);
             return d ? (
               <span className="fact">
-                <span className="fact-k">마감</span>
+                <span className="fact-k">{t("마감")}</span>
                 <span className="fact-v">
                   <span className={`dday${d.overdue ? " overdue" : d.soon ? " soon" : ""}`}>
                     {d.label}
@@ -92,7 +96,7 @@ export default async function ProjectPage({
         )}
         <details style={{ marginTop: 14 }}>
           <summary className="btn btn-sm" style={{ display: "inline-block" }}>
-            프로젝트 정보 수정
+            {t("프로젝트 정보 수정")}
           </summary>
           <div style={{ marginTop: 14 }}>
             <ProjectEditForm
@@ -110,7 +114,7 @@ export default async function ProjectPage({
       </div>
 
       {members.length === 0 ? (
-        <div className="card card-pad empty">이 프로젝트에 연결된 업무가 없습니다.</div>
+        <div className="card card-pad empty">{t("이 프로젝트에 연결된 업무가 없습니다.")}</div>
       ) : (
         members.map((m) => (
           <div key={m.intern.id} className="card card-pad section">
@@ -121,10 +125,10 @@ export default async function ProjectPage({
               </Link>
             </div>
             <div className="pill-row">
-              {m.tasks.map((t) => (
-                <Link key={t.id} href={`/tasks/${t.id}`} className="task-pill">
-                  {t.title}
-                  {t.status === "COMPLETED" ? " ✓" : ""}
+              {m.tasks.map((task) => (
+                <Link key={task.id} href={`/tasks/${task.id}`} className="task-pill">
+                  {task.title}
+                  {task.status === "COMPLETED" ? " ✓" : ""}
                 </Link>
               ))}
             </div>

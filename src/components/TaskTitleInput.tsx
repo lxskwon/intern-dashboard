@@ -1,13 +1,30 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { searchTasksAction, type TaskSuggestion } from "@/lib/actions";
+import { useT } from "@/components/LangProvider";
 
 export function TaskTitleInput() {
+  const t = useT();
   const [value, setValue] = useState("");
   const [suggestions, setSuggestions] = useState<TaskSuggestion[]>([]);
   const [open, setOpen] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Clear this (controlled) field when the surrounding form is reset — so
+  // Cancel / a successful add wipes the title along with the other fields.
+  useEffect(() => {
+    const form = inputRef.current?.form;
+    if (!form) return;
+    const onReset = () => {
+      setValue("");
+      setSuggestions([]);
+      setOpen(false);
+    };
+    form.addEventListener("reset", onReset);
+    return () => form.removeEventListener("reset", onReset);
+  }, []);
 
   function handleChange(v: string) {
     setValue(v);
@@ -27,19 +44,28 @@ export function TaskTitleInput() {
   return (
     <div className="autocomplete">
       <input
+        ref={inputRef}
         name="title"
         required
         autoComplete="off"
-        placeholder="예: 온보딩 플로우 개편"
+        placeholder={t("예: 슬라이드 자동 생성 기능 개발")}
         value={value}
         onChange={(e) => handleChange(e.target.value)}
         onFocus={() => suggestions.length > 0 && setOpen(true)}
         onBlur={() => setTimeout(() => setOpen(false), 150)}
+        // Enter here would submit the form (accidentally adding the task).
+        // Suggestions already appear as you type, so just close the dropdown.
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            setOpen(false);
+          }
+        }}
       />
       {open && suggestions.length > 0 && (
         <div className="autocomplete-list">
           <div className="autocomplete-hint">
-            비슷한 업무가 있어요 — 같은 업무라면 클릭해 이름을 맞춰보세요
+            {t("비슷한 업무가 있어요 — 같은 업무라면 클릭해 이름을 맞춰보세요")}
           </div>
           {suggestions.map((s) => (
             <button

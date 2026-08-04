@@ -45,29 +45,42 @@ a:hover {
   z-index: 10;
 }
 .topbar-inner {
+  /* Match .container so the logo + controls align with the dashboard's left
+     and right edges. */
   max-width: 1100px;
   margin: 0 auto;
   padding: 12px 24px;
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 16px;
 }
 .brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
   font-weight: 700;
   font-size: 17px;
   color: var(--text);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.brand-logo {
+  display: block;
+  height: 25px;
+  width: auto;
 }
 .brand:hover {
   text-decoration: none;
 }
 .nav {
   display: flex;
-  gap: 16px;
+  gap: 14px;
   align-items: center;
 }
 .nav a {
   color: var(--muted);
   font-weight: 500;
+  white-space: nowrap;
 }
 .nav a:hover {
   color: var(--text);
@@ -119,6 +132,113 @@ a:hover {
 .notif-badge.static {
   position: static;
   box-shadow: none;
+}
+
+/* ---- 모든 업무 (all tasks) ---- */
+.alltask-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 13px 18px;
+  border-bottom: 1px solid var(--border);
+}
+.alltask-row:last-child {
+  border-bottom: none;
+}
+.alltask-main {
+  min-width: 0;
+  flex: 1;
+}
+.alltask-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: var(--text);
+}
+.alltask-title:hover {
+  text-decoration: none;
+  color: var(--brand, #4f46e5);
+}
+.alltask-sub {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 3px;
+  font-size: 12.5px;
+}
+.alltask-intern {
+  color: var(--muted);
+  font-weight: 500;
+}
+.alltask-gh {
+  color: #4f46e5;
+  font-size: 12px;
+  font-weight: 600;
+}
+.alltask-side {
+  flex: 0 0 auto;
+  font-size: 12.5px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* ---- admin dropdown (topbar) ---- */
+.admin-menu {
+  position: relative;
+  margin-right: 14px;
+}
+.admin-menu-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 11px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: #fff;
+  color: var(--text);
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.admin-menu-btn:hover,
+.admin-menu-btn.open {
+  background: #f9fafb;
+  border-color: #c7cbd1;
+}
+.admin-menu-caret {
+  font-size: 10px;
+  color: var(--muted);
+}
+.admin-menu-pop {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 168px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
+  padding: 6px;
+  z-index: 60;
+}
+.admin-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 11px;
+  border-radius: 8px;
+  color: var(--text);
+  font-weight: 500;
+  font-size: 13.5px;
+  white-space: nowrap;
+}
+.admin-menu-item:hover {
+  background: #f3f4f6;
+  text-decoration: none;
 }
 
 /* ---- messages inbox ---- */
@@ -466,6 +586,12 @@ textarea {
   background: #fff;
   color: var(--text);
 }
+/* Native date/time/select controls render at slightly different intrinsic
+   heights than text inputs — pin them so form boxes line up consistently. */
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+select {
+  height: 40px;
+}
 input:focus,
 select:focus,
 textarea:focus {
@@ -512,6 +638,85 @@ select {
   cursor: pointer;
   font-family: inherit;
 }
+.lang-toggle {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-right: 12px;
+}
+.lang-toggle button {
+  border: none;
+  background: #fff;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  padding: 5px 11px;
+  cursor: pointer;
+  font-family: inherit;
+  line-height: 1.4;
+}
+.lang-toggle button + button {
+  border-left: 1px solid var(--border);
+}
+.lang-toggle button.active {
+  background: var(--brand);
+  color: #fff;
+}
+/* ---- 출근/퇴근 toggle (topbar) ---- */
+.check-toggle-wrap {
+  position: relative;
+  margin-right: 12px;
+}
+.check-toggle {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.check-toggle button {
+  border: none;
+  background: #fff;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  padding: 5px 12px;
+  cursor: pointer;
+  font-family: inherit;
+  line-height: 1.4;
+}
+.check-toggle form + form button {
+  border-left: 1px solid var(--border);
+}
+.check-toggle button:not(:disabled):hover {
+  background: #f3f4f6;
+}
+.check-toggle .check-in.active {
+  background: #16a34a;
+  color: #fff;
+}
+.check-toggle .check-out.active {
+  background: #475569;
+  color: #fff;
+}
+.check-toggle button:disabled {
+  cursor: default;
+}
+.check-toggle-hint {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  background: #fff;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  white-space: nowrap;
+  z-index: 40;
+}
 .btn:hover {
   background: #f9fafb;
 }
@@ -547,12 +752,14 @@ select {
   margin-bottom: 20px;
 }
 .toolbar .field {
+  flex: 1 1 130px;
+  min-width: 120px;
   margin-bottom: 0;
 }
 .toolbar input,
 .toolbar select {
-  min-width: 160px;
-  width: auto;
+  min-width: 0;
+  width: 100%;
 }
 
 .alert {
@@ -604,16 +811,28 @@ th {
 /* ---------- login ---------- */
 
 .login-wrap {
+  position: relative;
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 24px;
 }
+.login-lang {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+}
 .login-card {
   width: 100%;
   max-width: 380px;
   padding: 32px;
+}
+.login-logo {
+  display: block;
+  height: 44px;
+  width: auto;
+  margin-bottom: 16px;
 }
 .login-card h1 {
   margin: 0 0 4px;
@@ -737,6 +956,12 @@ th {
   align-items: center;
   gap: 12px;
 }
+.intern-card-nameline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
 
 /* ---- clickable task chips (진행현황) ---- */
 .task-chip-list {
@@ -853,6 +1078,9 @@ th {
   flex-shrink: 0;
 }
 .view-toggle button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   border: none;
   background: #fff;
   padding: 8px 14px;
@@ -861,6 +1089,11 @@ th {
   cursor: pointer;
   color: var(--muted);
   font-family: inherit;
+}
+/* Korean glyphs sit slightly high in their line box; nudge the icon up so it
+   reads optically centered with the label. */
+.view-toggle button svg {
+  transform: translateY(-1px);
 }
 .view-toggle button.active {
   background: var(--brand);
@@ -882,6 +1115,9 @@ th {
   border: 1px solid var(--border);
   border-radius: 12px;
   box-shadow: var(--shadow);
+  /* Grid item: without this, a wide row min-content blows out the single grid
+     column and overflows the container on narrow screens. */
+  min-width: 0;
 }
 .intern-row-main {
   display: flex;
@@ -889,6 +1125,7 @@ th {
   gap: 12px;
   width: 460px;
   flex-shrink: 0;
+  min-width: 0;
 }
 .intern-row-id {
   display: flex;
@@ -940,7 +1177,10 @@ th {
   flex-shrink: 0;
   white-space: nowrap;
 }
-@media (max-width: 720px) {
+/* The side-by-side list row needs the fixed 460px identity column + a usable
+   task column (~880px total). Below that, stack vertically so nothing gets
+   pushed off the right edge. */
+@media (max-width: 992px) {
   .intern-row {
     flex-direction: column;
     align-items: stretch;
@@ -950,6 +1190,9 @@ th {
   }
   .intern-row-main {
     width: auto;
+    /* Nudge the name/identity down a hair so it isn't crammed against the top
+       of the stacked card. */
+    transform: translateY(5px);
   }
 }
 
@@ -1015,14 +1258,28 @@ th {
   color: var(--brand-dark);
   padding-bottom: 6px;
   border-bottom: 2px solid #eef0fb;
-  margin-bottom: 10px;
+  margin-bottom: 0;
 }
 .journal-entry {
-  padding: 10px 0;
+  /* Symmetric top/bottom padding so every entry has the same gap below the
+     date line / separator above it (not just the first one). */
+  padding: 12px 0;
   border-bottom: 1px solid var(--border);
+}
+.journal-entry::after {
+  content: "";
+  display: block;
+  clear: both;
 }
 .journal-entry:last-child {
   border-bottom: none;
+}
+/* Edit/delete float top-right; body text wraps to their left starting at top */
+.journal-actions {
+  float: right;
+  display: inline-flex;
+  gap: 8px;
+  margin: 0 0 6px 12px;
 }
 .journal-author {
   font-size: 12px;
@@ -1030,8 +1287,22 @@ th {
   color: var(--muted);
 }
 .journal-body {
-  margin: 6px 0;
+  /* No top margin so text sits close to the date line; bottom margin gives the
+     photos/links some breathing room. */
+  margin: 0 0 14px;
+  line-height: 1.65;
+}
+.journal-line {
   white-space: pre-wrap;
+}
+/* Dash lines render as hanging-indent bullets: wrapped lines align under the
+   text, not under the dash. */
+.journal-bullet {
+  display: flex;
+  gap: 0.4em;
+}
+.journal-bullet-mark {
+  flex-shrink: 0;
 }
 .attachments {
   display: flex;
@@ -1045,6 +1316,124 @@ th {
   border-radius: 8px;
   border: 1px solid var(--border);
   object-fit: cover;
+}
+
+/* Uniform photo thumbnails (Twitter-style) */
+.photo-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+}
+.photo-thumb {
+  width: 104px;
+  height: 104px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: #f3f4f6;
+  cursor: pointer;
+}
+.photo-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.2s ease;
+}
+.photo-thumb:hover img {
+  transform: scale(1.05);
+}
+
+/* Full-screen lightbox */
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px;
+}
+.lightbox-img {
+  max-width: 90vw;
+  max-height: 88vh;
+  object-fit: contain;
+  border-radius: 6px;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5);
+}
+.lightbox-close {
+  position: absolute;
+  top: 18px;
+  right: 24px;
+  width: 40px;
+  height: 40px;
+  font-size: 30px;
+  line-height: 1;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+}
+.lightbox-close:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+.lightbox-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 52px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 38px;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+}
+.lightbox-nav:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+.lightbox-nav:disabled {
+  opacity: 0.25;
+  cursor: default;
+  background: rgba(255, 255, 255, 0.12);
+}
+.lightbox-nav.prev {
+  left: 20px;
+}
+.lightbox-nav.next {
+  right: 20px;
+}
+.lightbox-count {
+  position: absolute;
+  bottom: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  background: rgba(0, 0, 0, 0.45);
+  padding: 4px 12px;
+  border-radius: 999px;
+}
+.lightbox-caption {
+  position: absolute;
+  bottom: 20px;
+  left: 24px;
+  max-width: min(70vw, 560px);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 6px 14px;
+  border-radius: 999px;
 }
 .attach-link {
   display: inline-flex;
@@ -1268,10 +1657,8 @@ th {
   margin-bottom: 22px;
 }
 .hero-inbox {
-  position: absolute;
-  right: 18px;
-  bottom: 16px;
-  margin-right: 0;
+  margin-top: 10px;
+  margin-right: 0; /* override .notif-btn's topbar margin so it aligns flush right */
 }
 .hero-body {
   flex: 1;
@@ -1316,6 +1703,40 @@ th {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
+}
+.checkinout {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+.checkin-btn {
+  background: #16a34a;
+  color: #fff;
+  border-color: #16a34a;
+}
+.checkin-btn:hover {
+  background: #15803d;
+  border-color: #15803d;
+}
+.checkout-btn {
+  background: #475569;
+  color: #fff;
+  border-color: #475569;
+}
+.checkout-btn:hover {
+  background: #334155;
+  border-color: #334155;
+}
+.checkin-hint {
+  font-size: 11.5px;
+  line-height: 1.35;
+  max-width: 210px;
+  text-align: right;
+}
+.checkin-hint.err {
+  color: #b91c1c;
 }
 .hero-edit {
   position: relative;
@@ -1391,7 +1812,9 @@ th {
 
 .cal-grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  /* minmax(0, 1fr) lets each column shrink below its content width so all 7
+     days fit; without it, nowrap event labels push 금/토 off the edge. */
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   overflow: hidden;
   padding: 0;
 }
@@ -1412,6 +1835,7 @@ th {
 }
 .cal-cell {
   min-height: 96px;
+  min-width: 0;
   padding: 6px;
   border-right: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
@@ -1469,5 +1893,970 @@ th {
   }
   .cal-ev {
     font-size: 9px;
+  }
+}
+
+/* ---- work log entry link + printable report ---- */
+.entry-task-link {
+  font-size: 13px;
+  font-weight: 700;
+  color: #6366f1;
+  text-decoration: none;
+}
+.entry-task-link:hover {
+  text-decoration: underline;
+}
+.report {
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 28px 26px 60px;
+}
+.report-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 11px; /* → ~18px back-link→title gap, matching other pages */
+}
+.report-head {
+  border-bottom: 2px solid var(--text);
+  padding-bottom: 16px;
+  margin-bottom: 26px;
+}
+.report-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end; /* print button drops to the bottom of the title */
+  gap: 16px;
+  margin-bottom: 10px;
+}
+.report-head h1 {
+  font-size: 24px;
+  font-weight: 800;
+  margin: 0;
+}
+.report-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  color: var(--muted);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.report-generated {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 8px;
+}
+.report-day {
+  margin-bottom: 24px;
+  /* Days flow across page breaks — no forced whole-day page (avoids big blank
+     gaps when a day doesn't fit at the bottom of a page). */
+}
+.report-date {
+  font-size: 14px;
+  font-weight: 800;
+  color: #4338ca;
+  margin: 0 0 12px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+  break-after: avoid; /* never leave a date header stranded at a page bottom */
+}
+.report-entry {
+  padding-bottom: 14px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid #f1f5f9;
+  /* Entries flow freely across pages — text can fill the current page and its
+     images continue on the next (no big gaps). */
+}
+.report-entry-task {
+  font-size: 13px;
+  font-weight: 700;
+  color: #6366f1;
+  margin-bottom: 4px;
+}
+.report-entry-body {
+  margin: 4px 0 10px;
+  white-space: pre-wrap;
+  line-height: 1.55;
+}
+.report-files {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+.report-link {
+  font-size: 13px;
+  color: #4338ca;
+}
+/* Justified gallery ("tetris", ReportPhotos.tsx): rows fill the full width
+   exactly — no gaps. Images in a row share a height; aspect preserved. */
+.report-photos {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+.report-photo-row {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+}
+.report-photo-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+.report-photo {
+  display: block;
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+/* ---- 출퇴근 관리 (attendance) ---- */
+.attend-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.attend-item {
+  overflow: hidden;
+}
+.attend-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  cursor: pointer;
+  list-style: none;
+}
+.attend-summary::-webkit-details-marker {
+  display: none;
+}
+.attend-summary::before {
+  content: "▸";
+  color: var(--muted);
+  font-size: 12px;
+  margin-right: -4px;
+  transition: transform 0.15s;
+}
+.attend-item[open] .attend-summary::before {
+  transform: rotate(90deg);
+}
+.attend-name {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.attend-teams {
+  font-weight: 500;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.attend-rate {
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #15803d;
+  background: #dcfce7;
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+.attend-rate.low {
+  color: #b91c1c;
+  background: #fee2e2;
+}
+.attend-body {
+  border-top: 1px solid var(--border);
+  padding: 6px 18px 14px;
+}
+.attend-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 0;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 13.5px;
+}
+.attend-row:last-child {
+  border-bottom: none;
+}
+.attend-date {
+  color: var(--muted);
+  flex-shrink: 0;
+}
+.attend-times {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.attend-in {
+  color: #15803d;
+  font-weight: 600;
+}
+.attend-out {
+  color: #475569;
+  font-weight: 600;
+}
+.attend-late {
+  color: #b91c1c;
+  font-weight: 700;
+}
+
+.lead-tag {
+  display: inline-block;
+  background: #ede9fe;
+  color: #6d28d9;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.ended-tag {
+  display: inline-block;
+  background: #e5e7eb;
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+/* ---- 공지 (announcements) ---- */
+.page-head-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+.announce-wrap {
+  position: relative;
+}
+.announce-form {
+  text-align: left;
+}
+/* Create form is a dropdown under the 공지 작성 button; the edit form (inside a
+   banner) stays inline. */
+.announce-wrap .announce-form {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  width: min(560px, 92vw);
+  z-index: 30;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  padding: 16px;
+}
+.announce-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+.announce-banner {
+  border-left: 5px solid #4f46e5;
+  background: #eef2ff;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 14px;
+}
+.announce-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.announce-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.announce-pin {
+  font-size: 18px;
+  line-height: 1.45;
+  flex-shrink: 0;
+}
+.announce-body {
+  white-space: pre-wrap;
+  font-size: 15.5px;
+  font-weight: 700;
+  line-height: 1.5;
+  color: #1e1b4b;
+  min-width: 0;
+}
+.announce-attachments {
+  padding-left: 28px;
+}
+.announce-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--muted);
+  flex-wrap: wrap;
+}
+.announce-audience {
+  background: #e0e7ff;
+  color: #4338ca;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+.announce-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+.announce-edit {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: #4f46e5;
+  font-weight: 600;
+  font-size: 12px;
+  padding: 0;
+}
+.announce-edit:hover {
+  text-decoration: underline;
+}
+.announce-x {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 17px;
+  line-height: 1;
+  color: var(--muted);
+}
+.announce-x:hover {
+  color: var(--text);
+}
+
+/* ---- 관리자 관심 필요 (dashboard attention panel) ---- */
+.admin-attention {
+  border-left: 3px solid #f87171;
+  background: #fef2f2;
+}
+.attention-notice {
+  margin: 6px 0 4px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #b91c1c;
+}
+.attention-notice-link {
+  font-weight: 600;
+  color: #4f46e5;
+  white-space: nowrap;
+}
+.attention-groups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 44px;
+  margin-top: 8px;
+}
+.attention-label {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.attention-label.warn {
+  color: #dc2626;
+}
+
+/* ---- 배정 confirm (existing mentor) ---- */
+.assign-confirm {
+  margin-top: 14px;
+  padding: 14px 16px;
+  border: 1px solid #fde68a;
+  background: #fffbeb;
+  border-radius: 10px;
+}
+
+/* ---- 본부 (teams) multi-picker ---- */
+.teams-picker-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.teams-picker-row select {
+  flex: 1;
+  min-width: 0;
+}
+.teams-picker-row .btn {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+.teams-picker-x {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--muted);
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+}
+.teams-picker-x:hover {
+  background: #f8fafc;
+  color: var(--text);
+}
+
+/* ---- 구성원 관리 (members admin) ---- */
+.stat-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.stat-box {
+  flex: 1 1 0;
+  min-width: 88px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 12px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.stat-box.muted {
+  opacity: 0.65;
+}
+.stat-num {
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1;
+}
+.stat-label {
+  font-size: 12.5px;
+  color: var(--muted);
+  font-weight: 600;
+}
+.member-list {
+  display: flex;
+  flex-direction: column;
+}
+.member-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid #f1f5f9;
+  flex-wrap: wrap;
+}
+.member-row:last-child {
+  border-bottom: none;
+}
+.member-row.is-withdrawn,
+.member-row.is-ended {
+  opacity: 0.55;
+}
+.withdrawn-tag {
+  background: #e5e7eb;
+  color: #6b7280;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+/* Print/PDF-only cohort banner above the report header (hidden on screen). */
+.print-only {
+  display: none;
+}
+.report-pdf-logo {
+  display: block;
+  height: 34px;
+  width: auto;
+  margin-bottom: 8px;
+}
+.report-pdf-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #4338ca;
+  margin-bottom: 6px;
+  letter-spacing: 0.01em;
+}
+@media print {
+  /* Real per-page margins so content never jams to the top on pages 2+. */
+  @page {
+    margin: 14mm;
+  }
+  .topbar,
+  .no-print,
+  .help-fab {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+  .report {
+    max-width: none;
+    padding: 0;
+  }
+  body {
+    background: #fff;
+  }
+  .report-photo-row {
+    break-inside: avoid;
+  }
+}
+
+/* ---- absence approval ---- */
+.pending-pill {
+  background: #fefce8;
+  border-color: #fef08a;
+}
+.pending-tag {
+  color: #a16207;
+  font-weight: 700;
+}
+.pill-approve {
+  margin-left: 8px;
+  border: none;
+  background: var(--brand);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.pill-approve:hover {
+  background: var(--brand-dark);
+}
+.approval-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.approval-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid #fde68a;
+  background: #fffbeb;
+  border-radius: 10px;
+}
+
+.ai-tag {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #6d28d9;
+  background: #ede9fe;
+  padding: 1px 6px;
+  border-radius: 5px;
+  vertical-align: middle;
+  margin-left: 4px;
+}
+
+/* ---- help chatbot (floating) ---- */
+.help-fab {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 60;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: none;
+  background: var(--brand);
+  color: #fff;
+  font-size: 24px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(16, 24, 40, 0.22);
+  font-family: inherit;
+  line-height: 1;
+}
+.help-fab:hover {
+  background: var(--brand-dark);
+}
+.help-panel {
+  position: fixed;
+  right: 22px;
+  bottom: 86px;
+  z-index: 60;
+  width: min(380px, calc(100vw - 44px));
+  height: min(520px, calc(100vh - 130px));
+  display: flex;
+  flex-direction: column;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 12px 40px rgba(16, 24, 40, 0.2);
+  overflow: hidden;
+}
+.help-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  font-weight: 700;
+  font-size: 14px;
+  border-bottom: 1px solid var(--border);
+  background: #f9fafb;
+}
+.help-close {
+  border: none;
+  background: none;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--muted);
+}
+.help-msgs {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.help-msg {
+  max-width: 85%;
+  padding: 9px 12px;
+  border-radius: 12px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.help-msg.bot {
+  align-self: flex-start;
+  background: #f1f5f9;
+  color: #1f2937;
+  border-bottom-left-radius: 4px;
+}
+.help-msg.me {
+  align-self: flex-end;
+  background: var(--brand);
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
+.help-typing {
+  letter-spacing: 2px;
+}
+.help-input {
+  display: flex;
+  gap: 8px;
+  padding: 10px;
+  border-top: 1px solid var(--border);
+}
+.help-input input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  font-size: 13.5px;
+  font-family: inherit;
+}
+
+/* ---- inline "?" help tooltip ---- */
+/* Center a section heading with its inline "?" tooltip. */
+.section-title-tip {
+  display: flex;
+  align-items: center;
+}
+/* Center a form-field label with its inline "?" tooltip. */
+.label-tip {
+  display: inline-flex;
+  align-items: center;
+}
+.help-tip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+.help-tip-btn {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: none;
+  background: #e5e7eb;
+  color: #6b7280;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  cursor: pointer;
+  padding: 0;
+  font-family: inherit;
+}
+.help-tip-btn:hover {
+  background: var(--brand);
+  color: #fff;
+}
+.help-tip-bubble {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 40;
+  width: 260px;
+  padding: 9px 11px;
+  background: #111827;
+  color: #f9fafb;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
+  border-radius: 8px;
+  box-shadow: 0 6px 18px rgba(16, 24, 40, 0.25);
+  white-space: normal;
+}
+
+/* Password field with show/hide eye toggle */
+.password-field {
+  position: relative;
+}
+.password-field input {
+  padding-right: 42px;
+}
+.password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  cursor: pointer;
+  border-radius: 6px;
+}
+.password-toggle:hover {
+  color: var(--text);
+  background: #f3f4f6;
+}
+.password-toggle svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Cohort (기수) management list on the admin account page */
+.cohort-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.cohort-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+}
+.cohort-active {
+  color: #15803d;
+  font-size: 12px;
+  font-weight: 600;
+}
+.cohort-item {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+  overflow: hidden;
+}
+.cohort-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  cursor: pointer;
+  list-style: none;
+}
+.cohort-summary::-webkit-details-marker {
+  display: none;
+}
+.cohort-chevron {
+  color: #9ca3af;
+  transition: transform 0.15s ease;
+}
+.cohort-item[open] .cohort-chevron {
+  transform: rotate(180deg);
+}
+.cohort-body {
+  padding: 4px 12px 12px;
+  border-top: 1px solid var(--border);
+}
+.cohort-members {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 10px;
+}
+.cohort-member {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: var(--brand);
+  font-size: 13px;
+  font-weight: 500;
+}
+.cohort-member:hover {
+  background: #e0e7ff;
+}
+/* Small cohort chip on dashboard cards (shown only in the "전체 기수" view) */
+.cohort-tag {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #4f46e5;
+  font-size: 11px;
+  font-weight: 600;
+  vertical-align: middle;
+}
+/* Centers the small 기수 추가 button vertically on the input boxes (37px tall) */
+.cohort-btn-cell {
+  display: inline-flex;
+  align-items: center;
+  min-height: 37px;
+}
+
+/* Admin-only memo card on an intern's card */
+.admin-note {
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+.admin-note textarea {
+  background: #fff;
+}
+
+/* Sticky-note badge next to an intern's name on the dashboard (admins only) */
+.note-badge {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+  margin-left: 10px;
+}
+.note-badge-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 3px 8px;
+  font-size: 15px;
+  line-height: 1;
+  border: 1px solid #fcd34d;
+  background: #fef9c3;
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+.note-badge-btn:hover {
+  background: #fde68a;
+  border-color: #fbbf24;
+}
+.note-badge-bubble {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 40;
+  width: 240px;
+  max-width: 70vw;
+  padding: 9px 11px;
+  background: #111827;
+  color: #f9fafb;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
+  border-radius: 8px;
+  box-shadow: 0 6px 18px rgba(16, 24, 40, 0.25);
+  white-space: pre-wrap;
+  text-align: left;
+}
+
+/* ===== Mobile responsiveness pass ===== */
+@media (max-width: 720px) {
+  /* Top bar: brand + controls on one row, nav as a full-width scroll strip */
+  .topbar-inner {
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    padding: 10px 14px;
+  }
+  .nav {
+    order: 10;
+    width: 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 18px;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .nav::-webkit-scrollbar {
+    display: none;
+  }
+  .nav a {
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .whoami {
+    font-size: 14px;
+  }
+
+  /* Hero card: stack vertically so the name never gets squeezed */
+  .hero {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+    padding: 20px;
+  }
+  .hero-name-row h1 {
+    font-size: 22px;
+  }
+  .hero-status {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    align-self: stretch;
+  }
+  .hero-inbox {
+    position: static;
+    align-self: flex-start;
+    margin: 0;
   }
 }

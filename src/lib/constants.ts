@@ -1,10 +1,12 @@
 // Shared values across the app. There are no user roles — everyone is an intern.
 
+import { dateKeyUTC, todayKey } from "./format";
+
 // ---------- working-hours status ----------
 // 근무중 (green) while the current time falls within one of the intern's work
 // schedules for today; 퇴근 (grey) otherwise. UNSET when no schedules exist.
 
-export type WorkStatusKey = "WORKING" | "OFF" | "UNSET";
+export type WorkStatusKey = "WORKING" | "OFF" | "AWAY" | "UNSET";
 
 export type WorkStatusMeta = {
   key: WorkStatusKey;
@@ -17,6 +19,7 @@ export type WorkStatusMeta = {
 export const WORK_STATUS: Record<WorkStatusKey, WorkStatusMeta> = {
   WORKING: { key: "WORKING", label: "근무중", dot: "🟢", color: "#15803d", bg: "#dcfce7" },
   OFF: { key: "OFF", label: "퇴근", dot: "⚫", color: "#475569", bg: "#e2e8f0" },
+  AWAY: { key: "AWAY", label: "부재중", dot: "🟣", color: "#4338ca", bg: "#e0e7ff" },
   UNSET: { key: "UNSET", label: "근무시간 미설정", dot: "◽", color: "#94a3b8", bg: "#f1f5f9" },
 };
 
@@ -50,10 +53,69 @@ function nowInSeoul(): { day: number; minutes: number } {
 }
 
 /** Compute 근무중 / 퇴근 from a list of work schedules against the current time. */
-export function computeWorkStatus(schedules: Schedule[] | null | undefined): WorkStatusKey {
-  if (!schedules || schedules.length === 0) return "UNSET";
+// Effective work-time bounds for TODAY from any approved 출·퇴근 조정:
+// lateFrom pushes the start later (늦은 출근), earlyUntil pulls the end earlier
+// (이른 퇴근). Both are minutes-since-midnight, or null when not adjusted.
+export type WorkBounds = { lateFrom: number | null; earlyUntil: number | null };
+
+type AdjustRow = {
+  kind?: string | null;
+  adjustType?: string | null;
+  adjustTime?: string | null;
+  status?: string | null;
+  startDate?: Date | string | null;
+};
+
+/** Derive today's WorkBounds from a person's unavailabilities (only APPROVED
+ *  ADJUST rows dated today count). */
+export function todayAdjustBounds(rows: AdjustRow[] | null | undefined): WorkBounds {
+  let lateFrom: number | null = null;
+  let earlyUntil: number | null = null;
+  if (rows) {
+    const tk = todayKey();
+    for (const r of rows) {
+      if (r.kind !== "ADJUST" || r.status !== "APPROVED" || !r.startDate) continue;
+      if (dateKeyUTC(r.startDate) !== tk) continue;
+      const m = r.adjustTime ? toMinutes(r.adjustTime) : null;
+      if (m === null) continue;
+      if (r.adjustType === "LATE") lateFrom = lateFrom === null ? m : Math.max(lateFrom, m);
+      else if (r.adjustType === "EARLY") earlyUntil = earlyUntil === null ? m : Math.min(earlyUntil, m);
+    }
+  }
+  return { lateFrom, earlyUntil };
+}
+
+/** Today's manual check-in/out for a person (null when they haven't touched the
+ *  button today). `inAt` set + `outAt` null = currently checked in. */
+export type CheckState = { inAt: Date | string | null; outAt: Date | string | null } | null | undefined;
+
+/**
+ * Status is BUTTON-DRIVEN, not clock-driven:
+ *  - 출근 pressed (inAt set) and not yet 퇴근 → 근무중 (WORKING), whatever the clock says.
+ *  - 퇴근 pressed (outAt set), or never checked in → 퇴근 (OFF).
+ * The work schedule + 출·퇴근 조정 (bounds) only add overlays:
+ *  - 이른 퇴근: once past the registered leave time, 퇴근 regardless of the button.
+ *  - 늦은 출근: during [normal start → registered arrival] the (not-checked-in)
+ *    intern shows 부재중 (AWAY); before normal hours they're simply 퇴근.
+ * UNSET (근무시간 미설정) only shows for someone with no schedule who hasn't
+ * checked in — a gentle nudge to register hours.
+ */
+export function computeWorkStatus(
+  schedules: Schedule[] | null | undefined,
+  bounds?: WorkBounds,
+  check?: CheckState
+): WorkStatusKey {
   const { day, minutes: cur } = nowInSeoul();
 
+  // 이른 퇴근: an approved early-leave means they're off once its time passes.
+  if (bounds?.earlyUntil != null && cur >= bounds.earlyUntil) return "OFF";
+
+  // Button decides 근무중 / 퇴근.
+  if (check?.inAt && !check?.outAt) return "WORKING";
+  if (check?.outAt) return "OFF";
+
+  // Not checked in today.
+  if (!schedules || schedules.length === 0) return "UNSET";
   const todays = schedules.filter((s) =>
     s.days
       .split(",")
@@ -62,26 +124,41 @@ export function computeWorkStatus(schedules: Schedule[] | null | undefined): Wor
   );
   if (todays.length === 0) return "OFF";
 
-  for (const s of todays) {
-    const start = toMinutes(s.startTime);
-    const end = toMinutes(s.endTime);
-    if (start !== null && end !== null && cur >= start && cur <= end) return "WORKING";
+  // 늦은 출근 부재중 window: between the normal start and the registered arrival.
+  if (bounds?.lateFrom != null) {
+    const starts = todays
+      .map((s) => toMinutes(s.startTime))
+      .filter((m): m is number => m !== null);
+    const normalStart = starts.length ? Math.min(...starts) : null;
+    if (normalStart !== null && cur >= normalStart && cur < bounds.lateFrom) return "AWAY";
   }
+
   return "OFF";
 }
 
 export const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 
 // Selectable teams (본부).
-export const TEAMS = ["벤처 1본부", "벤처 2본부", "바이오", "Batch"];
+export const TEAMS = [
+  "벤처 1본부",
+  "벤처 2본부",
+  "바이오",
+  "경영지원",
+  "커뮤니케이션",
+  "액셀러레이터 본부: 이노베이션",
+  "액셀러레이터 본부: Batch",
+];
 
-/** Human label for a schedule's weekday set, e.g. "월", "화·수·목·금". */
-export function formatDays(days: string): string {
+/**
+ * Human label for a schedule's weekday set, e.g. "월", "화·수·목·금".
+ * Pass a translator to render weekday names in the current locale.
+ */
+export function formatDays(days: string, t?: (ko: string) => string): string {
   return days
     .split(",")
     .map((d) => Number(d.trim()))
     .filter((n) => !Number.isNaN(n))
     .sort((a, b) => a - b)
-    .map((n) => WEEKDAYS[n])
+    .map((n) => (t ? t(WEEKDAYS[n]) : WEEKDAYS[n]))
     .join("·");
 }

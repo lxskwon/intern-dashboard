@@ -20,12 +20,49 @@ model User {
   passwordHash String
   name         String
   kind         String  @default("INTERN") // INTERN | STAFF
-  team         String?
+  // Staff role tier (null for interns). Two tiers:
+  //   STAFF (직원) — base staff. Labeled 멘토 when they currently have ≥1 active
+  //     assigned intern (dynamic display label only; same powers either way).
+  //   ADMIN (관리자) — top tier: 기수 관리, 전체 요청, 배정, edit intern info,
+  //     change others' tier/status. BOSS is the same tier as ADMIN but its 구분
+  //     displays as 대표님 (currently only Jimmy).
+  role         String? // STAFF | ADMIN | BOSS
+  team         String? // deprecated — superseded by teams[]; kept for back-compat
+  // A member can belong to multiple 본부 (teams). Applies to interns and staff.
+  teams        String[] @default([])
+  // Set when an admin marks the member 탈퇴 (left the company). Non-null = 탈퇴:
+  // shown with a grey label and blocked from logging in.
+  withdrawnAt  DateTime?
   photoUrl     String?
-  mentorName   String?
+  // Which cohort (기수) this intern belongs to, e.g. "2026년 여름". New signups
+  // are auto-assigned the currently active cohort.
+  cohortId     String?
+  // Free-text note visible ONLY to admins (referrer, private comments, …).
+  adminNote    String?
+  // An intern can list multiple mentors (by name). Name-based so the link works
+  // even before a mentor signs up.
+  mentorNames  String[] @default([])
+  // An 인턴 대표 (intern representative): an intern an admin designates who may
+  // post 공지 to the 인턴 audience. No other special powers.
+  internLead   Boolean  @default(false)
+
+  phone     String?
+  githubUrl String?
+  // Resume is stored in a PRIVATE bucket; we keep the storage path (not a
+  // public URL) and serve short-lived signed links only to the intern & admins.
+  resumePath String?
+  resumeName String?
+  // AI-generated summary of the resume — safe to show to everyone (unlike the
+  // full file, which is intern + admin only).
+  resumeSummary String?
 
   startDate DateTime?
   endDate   DateTime?
+  // The work period (start/end) takes effect immediately but must be confirmed
+  // by an admin. Defaults to true so existing periods are grandfathered in;
+  // set to false whenever the intern edits it.
+  periodConfirmed   Boolean   @default(true)
+  periodConfirmedAt DateTime?
 
   // When the intern last viewed the comments on their own card (for the
   // "new comments" indicator).
@@ -34,15 +71,33 @@ model User {
   assignments      Assignment[]     @relation("InternAssignments")
   assignmentsBy    Assignment[]     @relation("AssignedBy")
   unavailabilities Unavailability[]
+  logEntries       TaskEntry[]      @relation("InternEntries")
   entriesAuthored  TaskEntry[]      @relation("EntryAuthor")
+  approvedUnavailabilities Unavailability[] @relation("ApprovedUnavail")
   workSchedules    WorkSchedule[]
+  checkIns         CheckIn[]
   comments         Comment[]
   messages         Message[]
   menteeClaims     MentorMentee[]
   passwordResets   PasswordReset[]
+  cohort           Cohort?          @relation(fields: [cohortId], references: [id], onDelete: SetNull)
 
   createdAt   DateTime @default(now())
   lastUpdated DateTime @updatedAt
+}
+
+// A cohort/기수, e.g. "2026년 여름". Exactly one is active at a time; new interns
+// are assigned to it on signup, and the dashboard defaults to showing it.
+model Cohort {
+  id        String   @id @default(cuid())
+  label     String   @unique // display, e.g. "2026년 여름"
+  year      Int
+  term      String // 봄 | 여름 | 가을 | 겨울
+  isActive  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  interns   User[]
+
+  @@unique([year, term])
 }
 
 // Single-use, time-limited password reset tokens (only the hash is stored).
@@ -101,10 +156,16 @@ model WorkSchedule {
   days      String   // comma-separated weekday numbers (0=Sun)
   startTime String   // "HH:MM"
   endTime   String   // "HH:MM"
+  // Applies immediately, but must be confirmed by an admin. New blocks are
+  // PENDING; the default APPROVED grandfathers existing blocks in.
+  status      String    @default("APPROVED") // PENDING | APPROVED
+  confirmedAt DateTime?
   createdAt DateTime @default(now())
 }
 
 // A period during which a person is out of office (개인 사정으로 부재중).
+// Requested by the intern; must be approved by an admin (관리자) before it
+// takes effect (shows 부재중).
 model Unavailability {
   id        String   @id @default(cuid())
   userId    String
@@ -112,6 +173,15 @@ model Unavailability {
   startDate DateTime
   endDate   DateTime
   reason    String?
+  // ABSENCE = full-day 부재; ADJUST = single-day 출·퇴근 조정 (late arrival /
+  // early leave). For ADJUST, startDate = endDate = that day.
+  kind       String   @default("ABSENCE") // ABSENCE | ADJUST
+  adjustType String? // LATE (늦은 출근) | EARLY (이른 퇴근)
+  adjustTime String? // "HH:MM" — arrival time (LATE) or leave time (EARLY)
+  status    String   @default("PENDING") // PENDING | APPROVED
+  approvedById String?
+  approvedBy   User?  @relation("ApprovedUnavail", fields: [approvedById], references: [id], onDelete: SetNull)
+  approvedAt   DateTime?
   createdAt DateTime @default(now())
 }
 
@@ -131,7 +201,8 @@ model Assignment {
   id          String  @id @default(cuid())
   title       String
   description String?
-  link        String?
+  link        String? // general link (ticket / doc / deployment)
+  githubUrl   String? // the task's GitHub repo/PR link, shown separately
   status      String  @default("ACTIVE") // ACTIVE | COMPLETED
 
   internId String
@@ -151,11 +222,16 @@ model Assignment {
   entries TaskEntry[]
 }
 
-// A per-day journal entry an intern adds to a task (what they did that day).
+// A per-day journal entry that belongs to an intern's log. It may optionally be
+// linked to one of their tasks (then it also shows on that task's page).
 model TaskEntry {
   id           String   @id @default(cuid())
-  assignmentId String
-  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  // Owner of the log entry.
+  internId     String
+  intern       User     @relation("InternEntries", fields: [internId], references: [id], onDelete: Cascade)
+  // Optional task link. Deleting the task unlinks the entry (keeps it in the log).
+  assignmentId String?
+  assignment   Assignment? @relation(fields: [assignmentId], references: [id], onDelete: SetNull)
   authorId     String?
   author       User?    @relation("EntryAuthor", fields: [authorId], references: [id], onDelete: SetNull)
   entryDate    DateTime
@@ -165,13 +241,40 @@ model TaskEntry {
   attachments Attachment[]
 }
 
-// A file, image, or link attached to a task entry.
+// A file, image, or link attached to a task entry OR an announcement.
 model Attachment {
-  id        String   @id @default(cuid())
-  entryId   String
-  entry     TaskEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
-  kind      String   // IMAGE | FILE | LINK
-  url       String
-  name      String?
-  createdAt DateTime @default(now())
+  id             String        @id @default(cuid())
+  entryId        String?
+  entry          TaskEntry?    @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  announcementId String?
+  announcement   Announcement? @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  kind           String // IMAGE | FILE | LINK
+  url            String
+  name           String?
+  createdAt      DateTime      @default(now())
+}
+
+// A manual daily check-in/out. Status (근무중/퇴근) is driven by these presses,
+// not the clock: `inAt` set + `outAt` null = 근무중; otherwise 퇴근. `date` is the
+// Seoul day key stored as UTC-midnight (one row per intern per day).
+model CheckIn {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date   DateTime
+  inAt   DateTime?
+  outAt  DateTime?
+
+  @@unique([userId, date])
+}
+
+// An admin announcement shown as a banner on the dashboard to a chosen audience.
+model Announcement {
+  id          String       @id @default(cuid())
+  body        String
+  audience    String       @default("ALL") // ALL | STAFF | INTERN | TEAM
+  team        String? // the 본부 name when audience = TEAM
+  authorName  String
+  createdAt   DateTime     @default(now())
+  attachments Attachment[]
 }

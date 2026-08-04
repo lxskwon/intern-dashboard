@@ -1,20 +1,23 @@
-export function fmtDate(d: Date | string | null | undefined): string {
+import type { Locale } from "./i18n";
+
+/** e.g. "2026년 7월 6일" (ko) / "Jul 6, 2026" (en). */
+export function fmtDate(d: Date | string | null | undefined, locale: Locale = "ko"): string {
   if (!d) return "—";
   const date = typeof d === "string" ? new Date(d) : d;
   if (isNaN(date.getTime())) return "—";
-  return date.toLocaleDateString("ko-KR", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+  return locale === "en"
+    ? date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })
+    : date.toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric" });
 }
 
-/** Short form like "6월 1일" (no year) for compact chips. */
-export function fmtShort(d: Date | string | null | undefined): string {
+/** Short form like "7월 6일" (ko) / "Jul 6" (en), no year, for compact chips. */
+export function fmtShort(d: Date | string | null | undefined, locale: Locale = "ko"): string {
   if (!d) return "—";
   const date = typeof d === "string" ? new Date(d) : d;
   if (isNaN(date.getTime())) return "—";
-  return date.toLocaleDateString("ko-KR", { month: "long", day: "numeric" });
+  return locale === "en"
+    ? date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+    : date.toLocaleDateString("ko-KR", { month: "long", day: "numeric" });
 }
 
 /** For <input type="date"> default values. */
@@ -64,6 +67,14 @@ export function dayKey(year: number, month0: number, day: number): number {
   return year * 10000 + (month0 + 1) * 100 + day;
 }
 
+/** Today's Seoul calendar day as a UTC-midnight Date, so that
+ *  dateKeyUTC(result) === todayKey(). Use for storing/matching day-keyed rows
+ *  (e.g. a daily check-in). */
+export function seoulTodayUTCDate(): Date {
+  const k = todayKey();
+  return new Date(Date.UTC(Math.floor(k / 10000), (Math.floor(k / 100) % 100) - 1, k % 100));
+}
+
 /** True once an internship's end date has passed (인턴 기간 종료). */
 export function isEnded(endDate: Date | null | undefined): boolean {
   if (!endDate) return false;
@@ -78,12 +89,14 @@ export function isNotStarted(startDate: Date | null | undefined): boolean {
   return k !== 0 && k > todayKey();
 }
 
-type Period = { startDate: Date; endDate: Date };
+type Period = { startDate: Date; endDate: Date; status: string };
 
-/** True if today falls within any of the given out-of-office periods. */
+/** True if today falls within any APPROVED out-of-office period. */
 export function isCurrentlyAway(periods: Period[]): boolean {
   const t = todayKey();
-  return periods.some((p) => dateKeyUTC(p.startDate) <= t && t <= dateKeyUTC(p.endDate));
+  return periods.some(
+    (p) => p.status === "APPROVED" && dateKeyUTC(p.startDate) <= t && t <= dateKeyUTC(p.endDate)
+  );
 }
 
 /** A task with no journal entry for this many days is flagged as "stale". */

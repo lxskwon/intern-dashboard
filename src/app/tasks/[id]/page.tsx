@@ -2,15 +2,13 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { getViewer } from "@/lib/session";
+import { getViewer, isFrozenIntern } from "@/lib/session";
 import { canEdit } from "@/lib/permissions";
-import { fmtDate, toDateInput, ddayInfo } from "@/lib/format";
+import { fmtDate as fmtDateI, toDateInput, ddayInfo } from "@/lib/format";
 import { relatedScore } from "@/lib/text";
-import { setTaskProjectAction } from "@/lib/actions";
-import { TaskEntryForm } from "./TaskEntryForm";
 import { TaskEditForm } from "./TaskEditForm";
 import { JournalEntry } from "./JournalEntry";
-import { ProjectInput } from "@/components/ProjectInput";
+import { getT, getLocale } from "@/lib/i18n-server";
 
 export const dynamic = "force-dynamic";
 
@@ -29,13 +27,15 @@ export default async function TaskPage({
 }) {
   const user = await getViewer();
   if (!user) redirect("/login");
+  const t = await getT();
+  const locale = await getLocale();
+  const fmtDate = (d: Date | string | null | undefined) => fmtDateI(d, locale);
 
   const { id } = await params;
   const task = await prisma.assignment.findUnique({
     where: { id },
     include: {
       intern: true,
-      project: true,
       assignedBy: { select: { name: true } },
       entries: {
         include: { author: { select: { name: true } }, attachments: true },
@@ -46,35 +46,25 @@ export default async function TaskPage({
 
   if (!task) notFound();
 
+  // A frozen (ended) intern may only view tasks of interns in their own 기수.
+  if (!user.isGuest && isFrozenIntern(user) && task.intern.cohortId !== user.cohortId) {
+    redirect(`/interns/${user.id}`);
+  }
+
   const mine = canEdit(user, task.internId);
   const done = task.status === "COMPLETED";
   const givenDate = task.startDate ?? task.createdAt;
 
-  // Hard grouping: other tasks in the same project.
-  const projectTasks = task.projectId
-    ? await prisma.assignment.findMany({
-        where: { projectId: task.projectId, id: { not: task.id } },
-        select: {
-          id: true,
-          title: true,
-          status: true,
-          intern: { select: { name: true } },
-        },
-        orderBy: { intern: { name: "asc" } },
-      })
-    : [];
-
-  // Soft discovery: similar-titled tasks not already in this project.
+  // Soft discovery: similar-titled tasks by other interns.
   const others = await prisma.assignment.findMany({
     where: {
       id: { not: task.id },
       internId: { not: task.internId },
-      ...(task.projectId ? { projectId: { not: task.projectId } } : {}),
     },
     select: { id: true, title: true, intern: { select: { name: true } } },
   });
   const related = others
-    .map((t) => ({ t, score: relatedScore(task.title, t.title) }))
+    .map((item) => ({ item, score: relatedScore(task.title, item.title) }))
     .filter((x) => x.score > 0)
     .sort((a, b) => b.score - a.score)
     .slice(0, 6);
@@ -91,7 +81,7 @@ export default async function TaskPage({
   return (
     <main className="container">
       <p style={{ marginTop: 0 }}>
-        <Link href={`/interns/${task.internId}`}>← {task.intern.name} 카드로</Link>
+        <Link href={`/interns/${task.internId}`}>{t("← {name} 카드로", { name: task.intern.name })}</Link>
       </p>
 
       <section className="task-hero">
@@ -107,23 +97,23 @@ export default async function TaskPage({
                 : { background: "#fef9c3", color: "#a16207" }
             }
           >
-            {done ? "완료" : "진행중"}
+            {done ? t("완료") : t("진행중")}
           </span>
         </div>
         {task.description && <p className="task-desc">{task.description}</p>}
         <div className="hero-facts" style={{ marginTop: 12 }}>
           <span className="fact">
-            <span className="fact-k">담당 인턴</span>
+            <span className="fact-k">{t("담당 인턴")}</span>
             <span className="fact-v">
               <Link href={`/interns/${task.internId}`}>{task.intern.name}</Link>
             </span>
           </span>
           <span className="fact">
-            <span className="fact-k">부여일</span>
+            <span className="fact-k">{t("부여일")}</span>
             <span className="fact-v">{fmtDate(givenDate)}</span>
           </span>
           <span className="fact">
-            <span className="fact-k">마감일</span>
+            <span className="fact-k">{t("마감일")}</span>
             <span className="fact-v">
               {fmtDate(task.expectedDoneDate)}
               {!done &&
@@ -142,16 +132,26 @@ export default async function TaskPage({
           </span>
           {task.assignedBy && (
             <span className="fact">
-              <span className="fact-k">배정</span>
+              <span className="fact-k">{t("배정")}</span>
               <span className="fact-v">{task.assignedBy.name}</span>
             </span>
           )}
           {task.link && (
             <span className="fact">
-              <span className="fact-k">링크</span>
+              <span className="fact-k">{t("링크 (티켓 / 문서)")}</span>
               <span className="fact-v">
                 <a href={task.link} target="_blank" rel="noreferrer">
-                  티켓/문서 ↗
+                  {t("티켓/문서 ↗")}
+                </a>
+              </span>
+            </span>
+          )}
+          {task.githubUrl && (
+            <span className="fact">
+              <span className="fact-k">{t("깃허브")}</span>
+              <span className="fact-v">
+                <a href={task.githubUrl} target="_blank" rel="noreferrer">
+                  🔗 GitHub ↗
                 </a>
               </span>
             </span>
@@ -163,7 +163,7 @@ export default async function TaskPage({
         <div className="card card-pad section">
           <details>
             <summary className="btn btn-sm" style={{ display: "inline-block" }}>
-              업무 정보 수정
+              {t("업무 정보 수정")}
             </summary>
             <div style={{ marginTop: 14 }}>
               <TaskEditForm
@@ -172,6 +172,7 @@ export default async function TaskPage({
                   title: task.title,
                   description: task.description ?? "",
                   link: task.link ?? "",
+                  githubUrl: task.githubUrl ?? "",
                   startDate: toDateInput(task.startDate),
                   expectedDoneDate: toDateInput(task.expectedDoneDate),
                 }}
@@ -181,85 +182,31 @@ export default async function TaskPage({
         </div>
       )}
 
-      {/* Project (hard grouping) */}
-      <div className="card card-pad section">
-        <h2 className="section-title">프로젝트</h2>
-        {task.project ? (
-          <>
-            <p style={{ margin: "0 0 10px" }}>
-              <Link href={`/projects/${task.projectId}`} className="proj-link">
-                📁 {task.project.name}
-              </Link>{" "}
-              <span className="muted">· 총 {projectTasks.length + 1}개 업무</span>
-            </p>
-            {projectTasks.length > 0 && (
-              <div className="pill-row">
-                {projectTasks.map((pt) => (
-                  <Link key={pt.id} href={`/tasks/${pt.id}`} className="task-pill">
-                    {pt.title} <span className="muted">· {pt.intern.name}</span>
-                    {pt.status === "COMPLETED" ? " ✓" : ""}
-                  </Link>
-                ))}
-              </div>
-            )}
-          </>
-        ) : (
-          <div className="empty">아직 프로젝트에 연결되지 않았습니다.</div>
-        )}
-
-        {mine && (
-          <details style={{ marginTop: 12 }}>
-            <summary className="btn btn-sm" style={{ display: "inline-block" }}>
-              프로젝트 {task.project ? "변경" : "연결"}
-            </summary>
-            <div style={{ marginTop: 12 }}>
-              <form action={setTaskProjectAction} style={{ maxWidth: 420 }}>
-                <input type="hidden" name="assignmentId" value={task.id} />
-                <ProjectInput defaultName={task.project?.name ?? ""} defaultId={task.projectId ?? ""} />
-                <button type="submit" className="btn btn-primary btn-sm" style={{ marginTop: 8 }}>
-                  저장
-                </button>
-              </form>
-              {task.project && (
-                <form action={setTaskProjectAction} style={{ marginTop: 8 }}>
-                  <input type="hidden" name="assignmentId" value={task.id} />
-                  <button type="submit" className="btn btn-sm btn-danger">
-                    프로젝트 연결 해제
-                  </button>
-                </form>
-              )}
-            </div>
-          </details>
-        )}
-      </div>
-
       {related.length > 0 && (
         <div className="card card-pad section">
-          <h2 className="section-title">비슷한 업무</h2>
+          <h2 className="section-title">{t("비슷한 업무")}</h2>
           <p className="muted" style={{ fontSize: 12.5, marginTop: -4, marginBottom: 12 }}>
-            이름이 비슷한 다른 업무예요. 같은 프로젝트라면 위에서 연결해보세요.
+            {t("이름이 비슷한 다른 인턴의 업무예요.")}
           </p>
           <div className="pill-row">
-            {related.map(({ t }) => (
-              <Link key={t.id} href={`/tasks/${t.id}`} className="task-pill">
-                {t.title} <span className="muted">· {t.intern.name}</span>
+            {related.map(({ item }) => (
+              <Link key={item.id} href={`/tasks/${item.id}`} className="task-pill">
+                {item.title} <span className="muted">{t("· {name}", { name: item.intern.name })}</span>
               </Link>
             ))}
           </div>
         </div>
       )}
 
-      {mine && (
-        <div className="card card-pad section">
-          <h2 className="section-title">오늘의 기록 추가</h2>
-          <TaskEntryForm assignmentId={task.id} today={toDateInput(new Date())} />
-        </div>
-      )}
-
       <div className="card card-pad section">
-        <h2 className="section-title">진행 일지 ({task.entries.length})</h2>
+        <h2 className="section-title">{t("진행 일지 ({n})", { n: task.entries.length })}</h2>
+        {mine && (
+          <p className="muted" style={{ fontSize: 12.5, marginTop: -4, marginBottom: 12 }}>
+            {t("기록은 내 카드의 기록 섹션에서 추가합니다. 여기에는 이 업무에 연결된 기록만 표시됩니다.")}
+          </p>
+        )}
         {groups.length === 0 ? (
-          <div className="empty">아직 기록이 없습니다.</div>
+          <div className="empty">{t("이 업무에 연결된 기록이 없습니다.")}</div>
         ) : (
           groups.map((g) => (
             <div key={g.key} className="journal-day">
@@ -268,12 +215,15 @@ export default async function TaskPage({
                 <JournalEntry
                   key={e.id}
                   mine={mine}
+                  showTaskLink={false}
+                  tasks={[{ id: task.id, title: task.title }]}
                   entry={{
                     id: e.id,
                     entryDate: toDateInput(e.entryDate),
                     body: e.body,
-                    authorName: e.author?.name ?? "알 수 없음",
                     attachments: e.attachments,
+                    assignmentId: task.id,
+                    taskTitle: task.title,
                   }}
                 />
               ))}

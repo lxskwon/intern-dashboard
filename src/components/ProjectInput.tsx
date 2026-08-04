@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { searchProjectsAction, type ProjectSuggestion } from "@/lib/actions";
+import { useT } from "@/components/LangProvider";
 
 export function ProjectInput({
   defaultName = "",
@@ -10,6 +11,7 @@ export function ProjectInput({
   defaultName?: string;
   defaultId?: string;
 }) {
+  const t = useT();
   const [name, setName] = useState(defaultName);
   const [pid, setPid] = useState(defaultId);
   const [suggestions, setSuggestions] = useState<ProjectSuggestion[]>([]);
@@ -37,7 +39,7 @@ export function ProjectInput({
       <input
         name="projectName"
         autoComplete="off"
-        placeholder="프로젝트 이름 (선택)"
+        placeholder={t("프로젝트 이름 (선택)")}
         value={name}
         onChange={(e) => handleChange(e.target.value)}
         onFocus={() => suggestions.length > 0 && setOpen(true)}
@@ -46,7 +48,7 @@ export function ProjectInput({
       <input type="hidden" name="projectId" value={pid} />
       {open && suggestions.length > 0 && (
         <div className="autocomplete-list">
-          <div className="autocomplete-hint">기존 프로젝트에 연결하려면 선택하세요</div>
+          <div className="autocomplete-hint">{t("기존 프로젝트에 연결하려면 선택하세요")}</div>
           {suggestions.map((s) => (
             <button
               key={s.id}
@@ -60,7 +62,7 @@ export function ProjectInput({
               }}
             >
               <span className="ac-title">{s.name}</span>
-              <span className="ac-intern">{s.count}개 업무</span>
+              <span className="ac-intern">{t("{count}개 업무", { count: s.count })}</span>
             </button>
           ))}
         </div>

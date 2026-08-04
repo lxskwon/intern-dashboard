@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useCallback } from "react";
+import { useT } from "./LangProvider";
 const STATUS_FILTERS = [
   { key: "WORKING", label: "근무중" },
   { key: "OFF", label: "퇴근" },
@@ -12,12 +13,15 @@ const STATUS_FILTERS = [
 export function Filters({
   teams,
   mentorNames,
-  projects,
+  cohorts,
+  selectedCohort,
 }: {
   teams: string[];
   mentorNames: string[];
-  projects: { id: string; name: string }[];
+  cohorts: { id: string; label: string }[];
+  selectedCohort: string;
 }) {
+  const t = useT();
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -35,66 +39,68 @@ export function Filters({
   return (
     <div className="toolbar">
       <div className="field">
-        <label>검색</label>
+        <label>{t("검색")}</label>
         <input
           type="search"
-          placeholder="이름…"
+          placeholder={t("이름…")}
           defaultValue={params.get("q") ?? ""}
           onChange={(e) => setParam("q", e.currentTarget.value)}
         />
       </div>
+      {cohorts.length > 0 && (
+        <div className="field">
+          <label>{t("기수")}</label>
+          <select
+            value={selectedCohort}
+            onChange={(e) => setParam("cohort", e.currentTarget.value)}
+          >
+            <option value="all">{t("전체 기수")}</option>
+            {cohorts.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
       <div className="field">
-        <label>상태</label>
+        <label>{t("상태")}</label>
         <select
           defaultValue={params.get("status") ?? ""}
           onChange={(e) => setParam("status", e.currentTarget.value)}
         >
-          <option value="">전체 상태</option>
+          <option value="">{t("전체 상태")}</option>
           {STATUS_FILTERS.map((s) => (
             <option key={s.key} value={s.key}>
-              {s.label}
+              {t(s.label)}
             </option>
           ))}
         </select>
       </div>
       <div className="field">
-        <label>팀</label>
+        <label>{t("팀")}</label>
         <select
           defaultValue={params.get("team") ?? ""}
           onChange={(e) => setParam("team", e.currentTarget.value)}
         >
-          <option value="">전체 팀</option>
-          {teams.map((t) => (
-            <option key={t} value={t}>
-              {t}
+          <option value="">{t("전체 팀")}</option>
+          {teams.map((tm) => (
+            <option key={tm} value={tm}>
+              {tm}
             </option>
           ))}
         </select>
       </div>
       <div className="field">
-        <label>멘토</label>
+        <label>{t("멘토")}</label>
         <select
           defaultValue={params.get("mentor") ?? ""}
           onChange={(e) => setParam("mentor", e.currentTarget.value)}
         >
-          <option value="">전체 멘토</option>
+          <option value="">{t("전체 멘토")}</option>
           {mentorNames.map((m) => (
             <option key={m} value={m}>
               {m}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div className="field">
-        <label>프로젝트</label>
-        <select
-          defaultValue={params.get("project") ?? ""}
-          onChange={(e) => setParam("project", e.currentTarget.value)}
-        >
-          <option value="">전체 프로젝트</option>
-          {projects.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
             </option>
           ))}
         </select>
@@ -103,14 +109,21 @@ export function Filters({
         params.get("status") ||
         params.get("team") ||
         params.get("mentor") ||
-        params.get("project")) && (
-        <button
-          type="button"
-          className="btn btn-sm"
-          onClick={() => router.push(pathname)}
-        >
-          초기화
-        </button>
+        params.get("cohort")) && (
+        <div className="field" style={{ flex: "0 0 auto", minWidth: 0, marginBottom: 0 }}>
+          {/* Hidden label spacer + input-height cell so the button centers on
+              the filter inputs instead of sitting at their bottom edge. */}
+          <label aria-hidden="true" style={{ visibility: "hidden" }}>&nbsp;</label>
+          <span className="cohort-btn-cell">
+            <button
+              type="button"
+              className="btn btn-sm"
+              onClick={() => router.push(pathname)}
+            >
+              {t("초기화")}
+            </button>
+          </span>
+        </div>
       )}
     </div>
   );

@@ -2,13 +2,17 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/session";
-import { fmtDate } from "@/lib/format";
+import { fmtDate as fmtDateI } from "@/lib/format";
+import { getT, getLocale } from "@/lib/i18n-server";
 
 export const dynamic = "force-dynamic";
 
 export default async function MessagesPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  const t = await getT();
+  const locale = await getLocale();
+  const fmtDate = (d: Date | string | null | undefined) => fmtDateI(d, locale);
 
   const msgs = await prisma.message.findMany({
     where: { OR: [{ internId: user.id }, { partnerId: user.id }] },
@@ -32,7 +36,7 @@ export default async function MessagesPage() {
     const key = `${m.internId}|${m.partnerId}`;
     const iAmIntern = user.id === m.internId;
     const otherName = iAmIntern ? m.partnerName : m.intern.name;
-    const t =
+    const thread =
       map.get(key) ??
       ({
         key,
@@ -44,38 +48,38 @@ export default async function MessagesPage() {
         lastAt: m.createdAt,
         unread: 0,
       } as Thread);
-    t.last = m.body;
-    t.lastAt = m.createdAt;
-    if (m.authorId !== user.id && m.readAt === null) t.unread += 1;
-    map.set(key, t);
+    thread.last = m.body;
+    thread.lastAt = m.createdAt;
+    if (m.authorId !== user.id && m.readAt === null) thread.unread += 1;
+    map.set(key, thread);
   }
   const threads = [...map.values()].sort((a, b) => b.lastAt.getTime() - a.lastAt.getTime());
 
   return (
     <main className="container">
       <h1 className="page-title" style={{ marginTop: 12 }}>
-        개인 메시지
+        {t("개인 메시지")}
       </h1>
-      <p className="page-sub">나와 관련된 비공개 대화입니다.</p>
+      <p className="page-sub">{t("나와 관련된 비공개 대화입니다.")}</p>
 
       {threads.length === 0 ? (
-        <div className="card card-pad empty">주고받은 메시지가 없습니다.</div>
+        <div className="card card-pad empty">{t("주고받은 메시지가 없습니다.")}</div>
       ) : (
         <div className="card" style={{ overflow: "hidden" }}>
-          {threads.map((t) => (
-            <Link key={t.key} href={`/messages/${t.internId}/${t.partnerId}`} className="inbox-row">
+          {threads.map((thread) => (
+            <Link key={thread.key} href={`/messages/${thread.internId}/${thread.partnerId}`} className="inbox-row">
               <div className="inbox-main">
                 <div className="inbox-name">
-                  {t.otherName}
-                  {user.id !== t.internId && (
-                    <span className="inbox-context"> · {t.internName} 카드</span>
+                  {thread.otherName}
+                  {user.id !== thread.internId && (
+                    <span className="inbox-context"> · {t("{name} 카드", { name: thread.internName })}</span>
                   )}
                 </div>
-                <div className="inbox-last">{t.last}</div>
+                <div className="inbox-last">{thread.last}</div>
               </div>
               <div className="inbox-side">
-                <span className="inbox-date">{fmtDate(t.lastAt)}</span>
-                {t.unread > 0 && <span className="notif-badge static">{t.unread}</span>}
+                <span className="inbox-date">{fmtDate(thread.lastAt)}</span>
+                {thread.unread > 0 && <span className="notif-badge static">{thread.unread}</span>}
               </div>
             </Link>
           ))}

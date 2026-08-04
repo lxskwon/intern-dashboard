@@ -1,8 +1,11 @@
 import Link from "next/link";
 import { Avatar } from "./Avatar";
 import { StatusBadge } from "./StatusBadge";
+import { AdminNoteBadge } from "./AdminNoteBadge";
 import { fmtShort } from "@/lib/format";
-import type { Schedule } from "@/lib/constants";
+import { getT, getLocale } from "@/lib/i18n-server";
+import type { Translator } from "@/lib/i18n";
+import type { Schedule, WorkBounds, CheckState } from "@/lib/constants";
 
 export type TaskSummary = {
   id: string;
@@ -16,49 +19,67 @@ export type TaskSummary = {
 export type CardIntern = {
   id: string;
   name: string;
-  team: string | null;
+  teams: string[];
   photoUrl: string | null;
   startDate: Date | string | null;
   endDate: Date | string | null;
   schedules: Schedule[];
+  bounds?: WorkBounds;
+  check?: CheckState;
   mentorName: string | null;
   ended: boolean;
   away: boolean;
+  withdrawn?: boolean;
+  internLead?: boolean;
   tasks: TaskSummary[];
+  // Present only for admins; drives the sticky-note badge next to the name.
+  adminNote?: string | null;
+  // Set only when viewing all cohorts; shows a small cohort chip on the card.
+  cohortLabel?: string | null;
 };
 
 const MAX_CHIPS = 2;
 
-function TaskChips({ tasks, internId }: { tasks: TaskSummary[]; internId: string }) {
+function TaskChips({
+  tasks,
+  internId,
+  t,
+  locale,
+}: {
+  tasks: TaskSummary[];
+  internId: string;
+  t: Translator;
+  locale: "ko" | "en";
+}) {
   if (tasks.length === 0) {
-    return <span className="muted no-tasks" style={{ fontSize: 13 }}>진행중인 업무 없음</span>;
+    return <span className="muted no-tasks" style={{ fontSize: 13 }}>{t("진행중인 업무 없음")}</span>;
   }
   const shown = tasks.slice(0, MAX_CHIPS);
   const extra = tasks.length - shown.length;
   return (
     <div className="task-chip-list">
-      {shown.map((t) => (
-        <Link key={t.id} href={`/tasks/${t.id}`} className="task-chip">
+      {shown.map((task) => (
+        <Link key={task.id} href={`/tasks/${task.id}`} className="task-chip">
           <span className="task-chip-left">
-            {t.dday && (
+            {task.dday && (
               <span
-                className={`dday${t.dday.overdue ? " overdue" : t.dday.soon ? " soon" : ""}`}
+                className={`dday${task.dday.overdue ? " overdue" : task.dday.soon ? " soon" : ""}`}
               >
-                {t.dday.label}
+                {task.dday.label}
               </span>
             )}
-            <span className="task-chip-title">{t.title}</span>
+            <span className="task-chip-title">{task.title}</span>
           </span>
-          <span className={`task-chip-meta${t.stale ? " stale" : ""}`}>
-            {t.stale ? "⚠️ " : ""}
-            {t.entryCount > 0 ? `기록 ${t.entryCount}` : "기록 없음"}
-            {t.lastEntry ? ` · 최근 ${fmtShort(t.lastEntry)}` : ""}
+          <span className={`task-chip-meta${task.stale ? " stale" : ""}`}>
+            {task.stale ? "⚠️ " : ""}
+            {task.entryCount > 0 ? t("기록 {n}", { n: task.entryCount }) : t("기록 없음")}
+            {task.lastEntry ? ` · ${t("최근")} ${fmtShort(task.lastEntry, locale)}` : ""}
           </span>
         </Link>
       ))}
       {extra > 0 && (
         <Link href={`/interns/${internId}`} className="task-more">
-          그외 {extra}건 · 상세보기 →
+          {t("그외 {n}건 · 상세보기 →", { n: extra })}
         </Link>
       )}
     </div>
@@ -66,20 +87,30 @@ function TaskChips({ tasks, internId }: { tasks: TaskSummary[]; internId: string
 }
 
 function Status({ intern }: { intern: CardIntern }) {
-  return <StatusBadge ended={intern.ended} away={intern.away} schedules={intern.schedules} />;
+  return (
+    <StatusBadge
+      ended={intern.ended}
+      away={intern.away}
+      schedules={intern.schedules}
+      bounds={intern.bounds}
+      check={intern.check}
+    />
+  );
 }
 
-export function InternCard({
+export async function InternCard({
   intern,
   variant = "grid",
 }: {
   intern: CardIntern;
   variant?: "grid" | "list";
 }) {
+  const t = await getT();
+  const locale = await getLocale();
   const duration =
     intern.startDate || intern.endDate
-      ? `${fmtShort(intern.startDate)} – ${fmtShort(intern.endDate)}`
-      : "미설정";
+      ? `${fmtShort(intern.startDate, locale)} – ${fmtShort(intern.endDate, locale)}`
+      : t("미설정");
 
   if (variant === "list") {
     return (
@@ -91,15 +122,19 @@ export function InternCard({
               <Link href={`/interns/${intern.id}`} className="intern-name">
                 {intern.name}
               </Link>
+              {intern.withdrawn && <span className="withdrawn-tag">{t("탈퇴")}</span>}
+              {intern.internLead && <span className="lead-tag">{t("인턴 대표")}</span>}
+              {intern.adminNote && <AdminNoteBadge note={intern.adminNote} />}
               <Status intern={intern} />
             </div>
             <span className="meta-line">
-              {intern.team ?? "팀 없음"} · 멘토: {intern.mentorName ?? "미지정"} · {duration}
+              {intern.teams.length ? intern.teams.join(" · ") : t("팀 없음")} · {t("멘토")}: {intern.mentorName ?? t("미지정")} · {duration}
+              {intern.cohortLabel && <span className="cohort-tag">{intern.cohortLabel}</span>}
             </span>
           </div>
         </div>
         <div className="intern-row-tasks">
-          <TaskChips tasks={intern.tasks} internId={intern.id} />
+          <TaskChips tasks={intern.tasks} internId={intern.id} t={t} locale={locale} />
         </div>
       </div>
     );
@@ -110,28 +145,36 @@ export function InternCard({
       <div className="intern-card-top">
         <Avatar name={intern.name} photoUrl={intern.photoUrl} size={52} />
         <div style={{ minWidth: 0, flex: 1 }}>
-          <Link href={`/interns/${intern.id}`} className="intern-name">
-            {intern.name}
-          </Link>
-          <div className="meta-line">{intern.team ?? "팀 없음"}</div>
+          <div className="intern-card-nameline">
+            <Link href={`/interns/${intern.id}`} className="intern-name">
+              {intern.name}
+            </Link>
+            {intern.withdrawn && <span className="withdrawn-tag">{t("탈퇴")}</span>}
+            {intern.internLead && <span className="lead-tag">{t("인턴 대표")}</span>}
+            {intern.adminNote && <AdminNoteBadge note={intern.adminNote} />}
+          </div>
+          <div className="meta-line">
+            {intern.teams.length ? intern.teams.join(" · ") : t("팀 없음")}
+            {intern.cohortLabel && <span className="cohort-tag">{intern.cohortLabel}</span>}
+          </div>
         </div>
         <Status intern={intern} />
       </div>
 
       <dl className="card-meta">
         <div>
-          <dt>멘토</dt>
-          <dd>{intern.mentorName ?? <span className="muted">미지정</span>}</dd>
+          <dt>{t("멘토")}</dt>
+          <dd>{intern.mentorName ?? <span className="muted">{t("미지정")}</span>}</dd>
         </div>
         <div>
-          <dt>인턴 기간</dt>
+          <dt>{t("인턴 기간")}</dt>
           <dd>{duration}</dd>
         </div>
       </dl>
 
       <div className="card-tasks">
-        <div className="card-tasks-label">업무 진행현황</div>
-        <TaskChips tasks={intern.tasks} internId={intern.id} />
+        <div className="card-tasks-label">{t("업무 진행현황")}</div>
+        <TaskChips tasks={intern.tasks} internId={intern.id} t={t} locale={locale} />
       </div>
     </div>
   );

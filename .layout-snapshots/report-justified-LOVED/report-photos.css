@@ -1,0 +1,32 @@
+/* Justified gallery with strip-stacking + 2x2 grids ("tetris", ReportPhotos.tsx).
+   Rows fill the width exactly (no gaps); wide strips stack; 4 photos -> 2x2. */
+.report-photos {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+.report-photo-row {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+}
+.report-photo-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+.report-photo {
+  display: block;
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+/* And inside @media print: */
+.report-photo-row {
+  break-inside: avoid;
+}

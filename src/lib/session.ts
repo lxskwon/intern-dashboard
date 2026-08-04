@@ -2,6 +2,7 @@ import "server-only";
 import { cookies } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
 import { prisma } from "./db";
+import { isEnded } from "./format";
 import type { User } from "@prisma/client";
 
 const COOKIE_NAME = "intern_dash_session";
@@ -21,18 +22,6 @@ const COOKIE_OPTS = {
 
 export async function createSession(userId: string): Promise<void> {
   const token = await new SignJWT({ userId })
-    .setProtectedHeader({ alg: "HS256" })
-    .setIssuedAt()
-    .setExpirationTime(`${MAX_AGE_SECONDS}s`)
-    .sign(secret);
-
-  const jar = await cookies();
-  jar.set(COOKIE_NAME, token, COOKIE_OPTS);
-}
-
-/** A view-only session for people who just want to browse without an account. */
-export async function createGuestSession(): Promise<void> {
-  const token = await new SignJWT({ guest: true })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(`${MAX_AGE_SECONDS}s`)
@@ -62,10 +51,45 @@ export async function getCurrentUser(): Promise<User | null> {
     const { payload } = await jwtVerify(token, secret);
     const userId = payload.userId;
     if (typeof userId !== "string") return null;
-    return await prisma.user.findUnique({ where: { id: userId } });
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    // 탈퇴 accounts lose access immediately.
+    return user && !user.withdrawnAt ? user : null;
   } catch {
     return null;
   }
+}
+
+/**
+ * Whether a staff member currently has ≥1 active assigned intern — used to
+ * display their 구분 as 멘토 (vs 직원). "Active" = an intern who isn't withdrawn
+ * and whose work period hasn't ended. A link exists if the intern lists this
+ * person in mentorNames, or via an explicit MentorMentee claim.
+ */
+export async function hasActiveMentees(staffId: string, staffName: string): Promise<boolean> {
+  const all = await prisma.user.findMany({
+    where: { kind: "INTERN" },
+    select: { name: true, mentorNames: true, endDate: true, withdrawnAt: true },
+  });
+  // "Active" = not withdrawn and internship not yet ended (same rule everywhere).
+  const activeInterns = all.filter((i) => !i.withdrawnAt && !isEnded(i.endDate));
+  const lname = staffName.toLowerCase();
+  if (activeInterns.some((i) => i.mentorNames.some((m) => m.toLowerCase() === lname))) return true;
+  const claims = await prisma.mentorMentee.findMany({
+    where: { mentorId: staffId },
+    select: { internName: true },
+  });
+  if (!claims.length) return false;
+  const activeNames = new Set(activeInterns.map((i) => i.name.toLowerCase()));
+  return claims.some((c) => activeNames.has(c.internName.toLowerCase()));
+}
+
+/** An intern whose internship has ended. Such interns are "frozen": they can
+ *  only see their own card and their own 기수 (cohort) — no other cohorts, other
+ *  pages, or new updates/announcements. */
+export function isFrozenIntern(
+  u: { kind?: string | null; endDate?: Date | null } | null | undefined
+): boolean {
+  return !!u && u.kind === "INTERN" && isEnded(u.endDate);
 }
 
 /** A guest viewer: browsing without an account, no edit rights. */
@@ -81,13 +105,11 @@ export async function getViewer(): Promise<Viewer | null> {
 
   try {
     const { payload } = await jwtVerify(token, secret);
-    if (payload.guest === true) {
-      return { isGuest: true, id: null, name: "게스트", kind: "GUEST" };
-    }
     const userId = payload.userId;
-    if (typeof userId !== "string") return null;
+    if (typeof userId !== "string") return null; // e.g. a legacy guest token
     const user = await prisma.user.findUnique({ where: { id: userId } });
-    return user ? { ...user, isGuest: false } : null;
+    if (!user || user.withdrawnAt) return null; // 탈퇴 accounts lose access
+    return { ...user, isGuest: false };
   } catch {
     return null;
   }
