@@ -7,6 +7,7 @@ import { Avatar } from "@/components/Avatar";
 import { AttachmentGallery } from "@/components/AttachmentGallery";
 import { BodyText } from "@/components/BodyText";
 import { getT, getLocale } from "@/lib/i18n-server";
+import { ActivityFilter } from "@/components/ActivityFilter";
 import type { Locale } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
@@ -32,14 +33,31 @@ function keyLabel(
   }).format(new Date(Date.UTC(y, m0, d)));
 }
 
-export default async function ActivityPage() {
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
+const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? "";
+
+export default async function ActivityPage({ searchParams }: { searchParams: SearchParams }) {
   const user = await getViewer();
   if (!user) redirect("/login");
   if (isFrozenIntern(user)) redirect(`/interns/${user.id}`);
   const t = await getT();
   const locale = await getLocale();
 
+  const sp = await searchParams;
+  const cohortParam = one(sp.cohort);
+
+  // 기수 defaults to the active cohort so 최근 활동 shows the current cohort's
+  // records; 전체 기수 ("all") shows every cohort's activity.
+  const TERM_ORDER: Record<string, number> = { 봄: 1, 여름: 2, 가을: 3, 겨울: 4 };
+  const cohorts = (await prisma.cohort.findMany()).sort(
+    (a, b) => b.year - a.year || (TERM_ORDER[b.term] ?? 0) - (TERM_ORDER[a.term] ?? 0)
+  );
+  const activeCohort = cohorts.find((c) => c.isActive) ?? null;
+  const defaultCohort = activeCohort?.id ?? "all";
+  const selectedCohort = cohortParam || defaultCohort;
+
   const entries = await prisma.taskEntry.findMany({
+    where: selectedCohort === "all" ? undefined : { intern: { cohortId: selectedCohort } },
     include: {
       intern: { select: { id: true, name: true, photoUrl: true } },
       assignment: { select: { id: true, title: true } },
@@ -48,6 +66,10 @@ export default async function ActivityPage() {
     orderBy: [{ entryDate: "desc" }, { createdAt: "desc" }],
     take: LIMIT,
   });
+
+  // Detail links return to this same filtered feed.
+  const backHere = `/activity${cohortParam ? `?cohort=${cohortParam}` : ""}`;
+  const backQ = encodeURIComponent(backHere);
 
   const today = todayKey();
   const yesterday = seoulDateKey(new Date(Date.now() - 86_400_000));
@@ -69,6 +91,12 @@ export default async function ActivityPage() {
       </h1>
       <p className="page-sub">{t("인턴들이 남긴 최근 업무 기록입니다.")}</p>
 
+      <ActivityFilter
+        cohorts={cohorts.map((c) => ({ id: c.id, label: c.label }))}
+        selectedCohort={selectedCohort}
+        defaultCohort={defaultCohort}
+      />
+
       {entries.length === 0 ? (
         <div className="card card-pad empty">{t("아직 활동 기록이 없습니다.")}</div>
       ) : (
@@ -81,13 +109,13 @@ export default async function ActivityPage() {
                   <Avatar name={e.intern.name} photoUrl={e.intern.photoUrl} size={36} />
                   <div className="feed-body">
                     <div className="feed-head">
-                      <Link href={`/interns/${e.intern.id}?back=${encodeURIComponent("/activity")}`} className="feed-task-link">
+                      <Link href={`/interns/${e.intern.id}?back=${backQ}`} className="feed-task-link">
                         <strong>{e.intern.name}</strong>
                       </Link>
                       {e.assignment && (
                         <>
                           <span className="muted"> · </span>
-                          <Link href={`/tasks/${e.assignment.id}?back=${encodeURIComponent("/activity")}`} className="feed-task-link">
+                          <Link href={`/tasks/${e.assignment.id}?back=${backQ}`} className="feed-task-link">
                             📌 {e.assignment.title}
                           </Link>
                         </>
