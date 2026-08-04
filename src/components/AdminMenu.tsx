@@ -35,7 +35,7 @@ export function AdminMenu({ label, items }: { label: string; items: AdminMenuIte
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
       >
-        {label}
+        <span className="admin-menu-label">{label}</span>
         {totalBadge > 0 && (
           <span className="notif-badge static" style={{ marginLeft: 6 }}>
             {totalBadge > 99 ? "99+" : totalBadge}

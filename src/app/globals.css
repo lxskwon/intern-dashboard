@@ -208,7 +208,13 @@ a:hover {
   background: #f9fafb;
   border-color: #c7cbd1;
 }
+.admin-menu-label {
+  position: relative;
+  top: 1px; /* centered position (1.5px) nudged up 0.5px; caret matches */
+}
 .admin-menu-caret {
+  position: relative;
+  top: -0.5px;
   font-size: 10px;
   color: var(--muted);
 }
