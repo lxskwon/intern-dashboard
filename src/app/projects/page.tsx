@@ -5,6 +5,7 @@ import { getViewer, isFrozenIntern } from "@/lib/session";
 import { getT, getLocale } from "@/lib/i18n-server";
 import { isEnded, ddayInfo, fmtShort } from "@/lib/format";
 import { TaskFilters } from "@/components/TaskFilters";
+import { autoCloseEndedInternTasks } from "@/lib/autoclose";
 
 export const dynamic = "force-dynamic";
 
@@ -43,31 +44,41 @@ export default async function AllTasksPage({ searchParams }: { searchParams: Sea
   const locale = await getLocale();
 
   const sp = await searchParams;
-  const cohortFilter = one(sp.cohort);
+  const cohortParam = one(sp.cohort);
   const internFilter = one(sp.intern);
   const teamFilter = one(sp.team);
 
-  const tasks = await loadTasks();
+  // Self-heal: close any ended intern's still-ongoing tasks (마감일 → 종료일 when
+  // unset) before listing, so 모든 업무 never shows a departed intern as 진행중.
+  await autoCloseEndedInternTasks();
 
-  // Build filter options from every task's intern, then apply the active filters.
-  const cohortOptions = [
-    ...new Map(
-      tasks
-        .filter((a) => a.intern.cohortId && a.intern.cohort)
-        .map((a) => [a.intern.cohortId!, a.intern.cohort!.label])
-    ),
-  ]
-    .map(([id, label]) => ({ id, label }))
+  const [tasks, cohorts] = await Promise.all([loadTasks(), prisma.cohort.findMany()]);
+  const activeCohort = cohorts.find((c) => c.isActive) ?? null;
+
+  // 기수 defaults to the currently active cohort so 모든 업무 doesn't surface
+  // long-finished cohorts by default; "all" (전체 기수) explicitly shows every one.
+  const defaultCohort = activeCohort?.id ?? "all";
+  const selectedCohort = cohortParam || defaultCohort;
+
+  // 기수 dropdown: cohorts that have any task, plus the active one.
+  const cohortsWithTasks = new Set(tasks.map((a) => a.intern.cohortId).filter(Boolean));
+  const cohortOptions = cohorts
+    .filter((c) => cohortsWithTasks.has(c.id) || c.isActive)
+    .map((c) => ({ id: c.id, label: c.label }))
     .sort((a, b) => b.label.localeCompare(a.label, "ko"));
-  const internOptions = [...new Map(tasks.map((a) => [a.intern.id, a.intern.name]))]
+
+  // 인턴 / 본부 options reflect the selected 기수 so the dropdowns stay coherent.
+  const scopeTasks =
+    selectedCohort === "all" ? tasks : tasks.filter((a) => a.intern.cohortId === selectedCohort);
+  const internOptions = [...new Map(scopeTasks.map((a) => [a.intern.id, a.intern.name]))]
     .map(([id, name]) => ({ id, name }))
     .sort((a, b) => a.name.localeCompare(b.name, "ko"));
-  const teamOptions = [...new Set(tasks.flatMap((a) => a.intern.teams))].sort((a, b) =>
+  const teamOptions = [...new Set(scopeTasks.flatMap((a) => a.intern.teams))].sort((a, b) =>
     a.localeCompare(b, "ko")
   );
 
   const filtered = tasks.filter((a) => {
-    if (cohortFilter && a.intern.cohortId !== cohortFilter) return false;
+    if (selectedCohort !== "all" && a.intern.cohortId !== selectedCohort) return false;
     if (internFilter && a.intern.id !== internFilter) return false;
     if (teamFilter && !a.intern.teams.includes(teamFilter)) return false;
     return true;
@@ -77,10 +88,15 @@ export default async function AllTasksPage({ searchParams }: { searchParams: Sea
     .filter((a) => a.status === "COMPLETED")
     .sort((a, b) => (b.completedAt?.getTime() ?? 0) - (a.completedAt?.getTime() ?? 0));
 
+  // 필터 초기화 appears whenever the view differs from the default (active 기수,
+  // no other filters); resetting clears the params back to that default.
+  const atDefault =
+    (cohortParam === "" || cohortParam === defaultCohort) && !internFilter && !teamFilter;
+
   // Links carry ?back=<this filtered view> so a detail page's back link returns
   // here — to the same filtered list, not to some default.
   const backQs = new URLSearchParams();
-  if (cohortFilter) backQs.set("cohort", cohortFilter);
+  if (cohortParam) backQs.set("cohort", cohortParam);
   if (internFilter) backQs.set("intern", internFilter);
   if (teamFilter) backQs.set("team", teamFilter);
   const qs = backQs.toString();
@@ -159,9 +175,10 @@ export default async function AllTasksPage({ searchParams }: { searchParams: Sea
             cohorts={cohortOptions}
             interns={internOptions}
             teams={teamOptions}
-            selectedCohort={cohortFilter}
+            selectedCohort={selectedCohort}
             selectedIntern={internFilter}
             selectedTeam={teamFilter}
+            showReset={!atDefault}
           />
 
           <h2 className="section-title">

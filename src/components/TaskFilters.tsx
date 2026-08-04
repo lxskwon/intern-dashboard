@@ -13,6 +13,7 @@ export function TaskFilters({
   selectedCohort,
   selectedIntern,
   selectedTeam,
+  showReset,
 }: {
   cohorts: { id: string; label: string }[];
   interns: { id: string; name: string }[];
@@ -20,6 +21,7 @@ export function TaskFilters({
   selectedCohort: string;
   selectedIntern: string;
   selectedTeam: string;
+  showReset: boolean;
 }) {
   const t = useT();
   const router = useRouter();
@@ -37,15 +39,13 @@ export function TaskFilters({
     [params, pathname, router]
   );
 
-  const hasFilter = selectedCohort !== "" || selectedIntern !== "" || selectedTeam !== "";
-
   return (
     <div className="toolbar">
       {cohorts.length > 0 && (
         <div className="field">
           <label>{t("기수")}</label>
           <select value={selectedCohort} onChange={(e) => setParam("cohort", e.currentTarget.value)}>
-            <option value="">{t("전체 기수")}</option>
+            <option value="all">{t("전체 기수")}</option>
             {cohorts.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.label}
@@ -76,7 +76,7 @@ export function TaskFilters({
           ))}
         </select>
       </div>
-      {hasFilter && (
+      {showReset && (
         <button type="button" className="btn" onClick={() => router.push(pathname)}>
           {t("필터 초기화")}
         </button>

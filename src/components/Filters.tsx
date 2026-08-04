@@ -15,11 +15,13 @@ export function Filters({
   mentorNames,
   cohorts,
   selectedCohort,
+  defaultCohort,
 }: {
   teams: string[];
   mentorNames: string[];
   cohorts: { id: string; label: string }[];
   selectedCohort: string;
+  defaultCohort: string;
 }) {
   const t = useT();
   const router = useRouter();
@@ -105,11 +107,13 @@ export function Filters({
           ))}
         </select>
       </div>
+      {/* 초기화 shows only when the view differs from the default. A cohort param
+          equal to the active (default) cohort doesn't count as a filter. */}
       {(params.get("q") ||
         params.get("status") ||
         params.get("team") ||
         params.get("mentor") ||
-        params.get("cohort")) && (
+        (params.get("cohort") && params.get("cohort") !== defaultCohort)) && (
         <div className="field" style={{ flex: "0 0 auto", minWidth: 0, marginBottom: 0 }}>
           {/* Hidden label spacer + input-height cell so the button centers on
               the filter inputs instead of sitting at their bottom edge. */}

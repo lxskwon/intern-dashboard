@@ -26,6 +26,7 @@ import {
 } from "./email";
 import { getT } from "./i18n-server";
 import { seoulTodayUTCDate } from "./format";
+import { autoCloseEndedInternTasks } from "./autoclose";
 
 // ---------- helpers ----------
 
@@ -603,9 +604,14 @@ export async function updateWorkPeriodAction(_prev: FormState, fd: FormData): Pr
   // Only the intern's own change pings admins for confirmation.
   if (isOwner && (start || end)) await notifyRequest(targetId, "근무 기간");
 
+  // If an admin just set an end date that's already passed, close the intern's
+  // still-ongoing tasks right away (마감일 → 종료일 when unset).
+  if (!isOwner && end) await autoCloseEndedInternTasks();
+
   revalidatePath("/");
   revalidatePath(`/interns/${targetId}`);
   revalidatePath("/me");
+  revalidatePath("/projects");
   return { ok: true };
 }
 

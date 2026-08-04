@@ -286,6 +286,7 @@ export default async function DashboardPage({
         mentorNames={mentorNames}
         cohorts={frozen ? [] : cohorts.map((c) => ({ id: c.id, label: c.label }))}
         selectedCohort={selectedCohort}
+        defaultCohort={activeCohort?.id ?? "all"}
       />
 
       {filtered.length === 0 ? (
