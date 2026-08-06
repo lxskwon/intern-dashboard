@@ -94,6 +94,10 @@ model Cohort {
   year      Int
   term      String // 봄 | 여름 | 가을 | 겨울
   isActive  Boolean  @default(false)
+  // Set only when an admin explicitly clicks 종료. A cohort that merely lost
+  // active status (because another was activated) stays endedAt = null and
+  // displays normally — only 종료됨 cohorts are dimmed + tagged.
+  endedAt   DateTime?
   createdAt DateTime @default(now())
   interns   User[]
 

@@ -230,7 +230,9 @@ export async function setActiveCohortAction(fd: FormData): Promise<void> {
   const id = str(fd, "cohortId");
   const cohort = await prisma.cohort.findUnique({ where: { id } });
   if (!cohort) throw new Error("기수를 찾을 수 없습니다.");
-  await prisma.cohort.update({ where: { id }, data: { isActive: true } });
+  // Activating a cohort clears any prior 종료 mark; deactivating the others does
+  // NOT end them — they just lose the "활성" label and stay displayed normally.
+  await prisma.cohort.update({ where: { id }, data: { isActive: true, endedAt: null } });
   await prisma.cohort.updateMany({ where: { id: { not: id } }, data: { isActive: false } });
   revalidatePath("/");
   revalidatePath("/me");
@@ -253,8 +255,10 @@ export async function endActiveCohortAction(fd: FormData): Promise<void> {
     .filter((c) => rank(c) > rank(current))
     .sort((a, b) => rank(a) - rank(b))[0];
 
-  await prisma.cohort.update({ where: { id }, data: { isActive: false } });
-  if (next) await prisma.cohort.update({ where: { id: next.id }, data: { isActive: true } });
+  // 종료 explicitly ends this cohort (dimmed + 종료됨). The auto-activated next
+  // one becomes active and is cleared of any prior 종료 mark.
+  await prisma.cohort.update({ where: { id }, data: { isActive: false, endedAt: new Date() } });
+  if (next) await prisma.cohort.update({ where: { id: next.id }, data: { isActive: true, endedAt: null } });
   revalidatePath("/");
   revalidatePath("/me");
   revalidatePath("/cohorts");

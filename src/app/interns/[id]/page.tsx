@@ -18,9 +18,16 @@ import {
   dateKeyUTC,
   todayKey,
 } from "@/lib/format";
-import { computeWorkStatus, todayAdjustBounds, formatDays, classifyCheckout } from "@/lib/constants";
+import {
+  computeWorkStatus,
+  todayAdjustBounds,
+  formatDays,
+  classifyCheckout,
+  journalInfoByDay,
+} from "@/lib/constants";
 import { Avatar } from "@/components/Avatar";
 import { StatusBadge } from "@/components/StatusBadge";
+import { NoJournalNotice } from "@/components/NoJournalNotice";
 import { ProfileForm } from "@/components/ProfileForm";
 import { AdminNoteForm } from "@/components/AdminNoteForm";
 import { UnavailabilityForm } from "@/components/UnavailabilityForm";
@@ -67,9 +74,9 @@ export default async function InternDetailPage({
   const fmtShort = (d: Date | string | null | undefined) => fmtShortI(d, locale);
 
   const { id } = await params;
-  // Look back ~3 weeks of check-ins (for the 무기록 자동 퇴근 nudge).
+  // Look back the last two weeks of check-ins (for the 무기록 자동 퇴근 nudge).
   const recentSince = new Date(seoulTodayUTCDate());
-  recentSince.setUTCDate(recentSince.getUTCDate() - 21);
+  recentSince.setUTCDate(recentSince.getUTCDate() - 14);
   const sp = await searchParams;
   const backParam = Array.isArray(sp.back) ? sp.back[0] : sp.back;
   const back = resolveBack(t, backParam, {
@@ -151,11 +158,30 @@ export default async function InternDetailPage({
 
   // 무기록 자동 퇴근 nudge: days the intern checked in, never pressed 퇴근, and
   // wrote no 기록. Shown to the intern (and admins); clears once a 기록 is added.
-  const journalDays = new Set(intern.logEntries.map((e) => dateKeyUTC(e.entryDate)));
-  const noJournalDays = intern.checkIns.filter(
-    (c) => classifyCheckout(c, intern.workSchedules, journalDays.has(dateKeyUTC(c.date))) === "AUTO_NOJOURNAL"
-  );
+  const dayInfo = journalInfoByDay(intern.logEntries);
+  // Nudge only about days with NO 기록 at all. A day whose 기록 was backfilled late
+  // stays 무기록 in the admin panel, but nagging the intern to write one they've
+  // already added would be wrong — so exclude any day that has an entry.
+  const noJournalDays = intern.checkIns.filter((c) => {
+    const dk = dateKeyUTC(c.date);
+    return (
+      classifyCheckout(c, intern.workSchedules, dayInfo.get(dk)?.timely ?? false) === "AUTO_NOJOURNAL" &&
+      !dayInfo.has(dk)
+    );
+  });
   const showNoJournalNotice = (mine || isAdminViewer) && noJournalDays.length > 0;
+  const noJournalMessage =
+    noJournalDays.length > 1
+      ? t("최근 근무일 중 {n}일을 기록 없이 자동 퇴근했어요. 기록을 남기고 퇴근을 눌러주세요.", {
+          n: noJournalDays.length,
+        })
+      : t("{date} 기록 없이 자동 퇴근되었어요. 기록을 남기고 퇴근을 눌러주세요.", {
+          date: showNoJournalNotice ? fmtShort(noJournalDays[0].date) : "",
+        });
+  // Signature = most recent 무기록 day → dismissing hides this set; a newer one reappears.
+  const noJournalSig = showNoJournalNotice
+    ? String(Math.max(...noJournalDays.map((c) => dateKeyUTC(c.date))))
+    : "";
 
   // Options for linking a log entry to one of this intern's tasks.
   const taskOptions = intern.assignments.map((a) => ({ id: a.id, title: a.title }));
@@ -192,16 +218,12 @@ export default async function InternDetailPage({
       </p>
 
       {showNoJournalNotice && (
-        <div className="nojournal-memo">
-          ⚠️{" "}
-          {noJournalDays.length > 1
-            ? t("최근 근무일 중 {n}일을 기록 없이 자동 퇴근했어요. 기록을 남기고 퇴근을 눌러주세요.", {
-                n: noJournalDays.length,
-              })
-            : t("{date} 기록 없이 자동 퇴근되었어요. 기록을 남기고 퇴근을 눌러주세요.", {
-                date: fmtShort(noJournalDays[0].date),
-              })}
-        </div>
+        <NoJournalNotice
+          message={noJournalMessage}
+          signature={noJournalSig}
+          internId={intern.id}
+          closeLabel={t("닫기")}
+        />
       )}
 
       <section className="hero" style={{ borderTop: `5px solid ${heroBorder}` }}>

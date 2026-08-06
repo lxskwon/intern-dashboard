@@ -155,6 +155,10 @@ export const EN: Record<string, string> = {
   "← {name} 카드로": "← Back to {name}'s Card",
   "자동 퇴근": "Auto check-out",
   "무기록 자동 퇴근": "Auto check-out, no journal",
+  "종료됨": "Ended",
+  "전 기수 출석 기록": "Past cohorts' attendance",
+  "{n}개 기수": "{n} cohorts",
+  "{date} 기록 보강": "Journal backfilled {date}",
   "정상 퇴근 — 퇴근 버튼을 눌렀어요 (기록 포함).": "Normal check-out — pressed the 퇴근 button (with a journal).",
   "기록은 있지만 퇴근 버튼을 안 눌러 설정 퇴근 시간 {n}분 후 자동 처리됐어요.":
     "Had a journal but didn't press 퇴근, so it auto-closed {n} min after the scheduled end.",

@@ -1,6 +1,6 @@
 // Shared values across the app. There are no user roles — everyone is an intern.
 
-import { dateKeyUTC, todayKey } from "./format";
+import { dateKeyUTC, todayKey, seoulDateKey } from "./format";
 
 // ---------- working-hours status ----------
 // 근무중 (green) while the current time falls within one of the intern's work
@@ -191,6 +191,33 @@ export function classifyCheckout(
   if (check.outAt) return "MANUAL";
   if (!isDayAutoClosed(check.date, schedules)) return "OPEN";
   return hasJournal ? "AUTO" : "AUTO_NOJOURNAL";
+}
+
+export type DayJournalInfo = {
+  // A 기록 written on (or before) that day — redeems it to 자동 퇴근.
+  timely: boolean;
+  // If no timely 기록 but one was backfilled later, the Seoul YYYYMMDD it was
+  // written on (earliest). A backfilled 기록 does NOT redeem the 무기록 flag —
+  // the day stays 무기록 자동 퇴근, just annotated with this "보강" date.
+  backfillKey: number | null;
+};
+
+/** Per-day journal status keyed by the log's date (dateKeyUTC of entryDate). A
+ *  기록 counts as timely when it was written the same Seoul day (or earlier);
+ *  written on a later day it's a backfill. */
+export function journalInfoByDay(
+  entries: { entryDate: Date | string; createdAt: Date | string }[]
+): Map<number, DayJournalInfo> {
+  const m = new Map<number, DayJournalInfo>();
+  for (const e of entries) {
+    const dayKey = dateKeyUTC(e.entryDate);
+    const madeKey = seoulDateKey(e.createdAt);
+    const cur = m.get(dayKey) ?? { timely: false, backfillKey: null };
+    if (madeKey <= dayKey) cur.timely = true;
+    else cur.backfillKey = cur.backfillKey === null ? madeKey : Math.min(cur.backfillKey, madeKey);
+    m.set(dayKey, cur);
+  }
+  return m;
 }
 
 export const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];

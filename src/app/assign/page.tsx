@@ -20,7 +20,7 @@ export default async function AssignPage() {
   if (!canAssign(user)) redirect("/");
   const t = await getT();
 
-  const [staff, interns, claims] = await Promise.all([
+  const [staff, interns, claims, activeCohort] = await Promise.all([
     prisma.user.findMany({
       where: { kind: "STAFF", role: { not: "BOSS" } },
       select: { id: true, name: true },
@@ -28,25 +28,26 @@ export default async function AssignPage() {
     }),
     prisma.user.findMany({
       where: { kind: "INTERN" },
-      select: { id: true, name: true, mentorNames: true, endDate: true, withdrawnAt: true },
+      select: { id: true, name: true, mentorNames: true, endDate: true, withdrawnAt: true, cohortId: true },
       orderBy: { name: "asc" },
     }),
     prisma.mentorMentee.findMany({
       include: { mentor: { select: { name: true } } },
       orderBy: { createdAt: "asc" },
     }),
+    prisma.cohort.findFirst({ where: { isActive: true }, select: { id: true } }),
   ]);
 
   // Build EVERY current mentor↔intern pairing, keyed by intern name — from both
   // 대표/관리자 claims AND names interns typed in themselves.
   const key = (n: string) => n.trim().toLowerCase();
-  // Finished (인턴 종료) or withdrawn interns are no longer a *current* pairing —
-  // their mentor name stays on the intern's card as history, but the pairing is
-  // dropped from "현재 배정" and doesn't make the mentor a 멘토 anymore.
-  const activeInterns = interns.filter((i) => !isEnded(i.endDate) && !i.withdrawnAt);
-  const inactiveNames = new Set(
-    interns.filter((i) => isEnded(i.endDate) || i.withdrawnAt).map((i) => key(i.name))
-  );
+  // A *current* intern belongs to the active 기수 and hasn't finished/withdrawn.
+  // Interns of a past 기수 (or finished/withdrawn) are dropped from the picker and
+  // "현재 배정" — their mentor name stays on their card as history.
+  const isCurrent = (i: (typeof interns)[number]) =>
+    i.cohortId === activeCohort?.id && !isEnded(i.endDate) && !i.withdrawnAt;
+  const activeInterns = interns.filter(isCurrent);
+  const inactiveNames = new Set(interns.filter((i) => !isCurrent(i)).map((i) => key(i.name)));
   const map = new Map<string, Row>();
   for (const i of activeInterns) {
     const row: Row = map.get(key(i.name)) ?? { internName: i.name, mentors: [] };
@@ -127,10 +128,6 @@ export default async function AssignPage() {
           </div>
         )}
       </div>
-
-      <p style={{ marginTop: 8 }}>
-        <Link href="/">← {t("대시보드로 돌아가기")}</Link>
-      </p>
     </main>
   );
 }

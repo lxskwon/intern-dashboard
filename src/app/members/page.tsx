@@ -23,6 +23,11 @@ export default async function MembersPage({
   const t = await getT();
   const team = ((await searchParams).team ?? "").trim();
 
+  const activeCohort = await prisma.cohort.findFirst({
+    where: { isActive: true },
+    select: { id: true },
+  });
+
   const members = await prisma.user.findMany({
     select: {
       id: true,
@@ -34,11 +39,16 @@ export default async function MembersPage({
       withdrawnAt: true,
       internLead: true,
       endDate: true,
+      cohortId: true,
     },
     orderBy: [{ kind: "asc" }, { name: "asc" }],
   });
   const staff = members.filter((m) => m.kind === "STAFF");
-  const interns = members.filter((m) => m.kind === "INTERN");
+  // Only interns of the active 기수 are current 구성원. Once a new 기수 is
+  // activated, the previous cohort's interns drop off entirely (a whole-cohort
+  // version of 인턴 종료). Within the active 기수, individually-finished interns
+  // still show, dimmed + 인턴 종료, until the cohort itself ends.
+  const interns = members.filter((m) => m.kind === "INTERN" && m.cohortId === activeCohort?.id);
 
   // 본부 filter — narrows the stats and both lists to one division.
   const allTeams = [...new Set(members.flatMap((m) => m.teams))].sort((a, b) => a.localeCompare(b, "ko"));
@@ -51,10 +61,12 @@ export default async function MembersPage({
   // avoid a query per staff member.
   const allInterns = await prisma.user.findMany({
     where: { kind: "INTERN" },
-    select: { name: true, mentorNames: true, endDate: true, withdrawnAt: true },
+    select: { name: true, mentorNames: true, endDate: true, withdrawnAt: true, cohortId: true },
   });
-  // "Active" = not withdrawn and internship not yet ended.
-  const activeInterns = allInterns.filter((i) => !i.withdrawnAt && !isEnded(i.endDate));
+  // "Active" = current 기수, not withdrawn, internship not yet ended.
+  const activeInterns = allInterns.filter(
+    (i) => i.cohortId === activeCohort?.id && !i.withdrawnAt && !isEnded(i.endDate)
+  );
   const claims = await prisma.mentorMentee.findMany({ select: { mentorId: true, internName: true } });
   const activeInternNames = new Set(activeInterns.map((i) => i.name.toLowerCase()));
   const mentorNamesReferenced = new Set(

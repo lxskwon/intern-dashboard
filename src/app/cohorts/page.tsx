@@ -40,12 +40,13 @@ export default async function CohortsPage() {
         {cohorts.length > 0 && (
           <div className="cohort-list">
             {cohorts.map((c) => (
-              <details key={c.id} className="cohort-item">
+              <details key={c.id} className={`cohort-item${c.endedAt ? " is-ended" : ""}`}>
                 <summary className="cohort-summary">
                   <span className="mentee-info">
                     <span className="mentee-name">
                       {c.label}
                       {c.isActive && <span className="cohort-active"> · {t("활성")}</span>}
+                      {c.endedAt && <span className="cohort-ended-tag">{t("종료됨")}</span>}
                     </span>
                     <span className="meta-line">{t("인턴 {n}명", { n: c._count.interns })}</span>
                   </span>
