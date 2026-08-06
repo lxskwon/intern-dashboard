@@ -52,6 +52,7 @@ export default async function MePage() {
       ],
     },
     include: {
+      cohort: { select: { label: true } },
       workSchedules: { select: { days: true, startTime: true, endTime: true } },
       unavailabilities: {
         select: { startDate: true, endDate: true, status: true, kind: true, adjustType: true, adjustTime: true },
@@ -61,6 +62,23 @@ export default async function MePage() {
     orderBy: { name: "asc" },
   });
   const linkedNames = new Set(mentees.map((m) => m.name));
+
+  // Split mentees into current (active 기수, ongoing) and past (멘토 이력) —
+  // finished interns or a previous cohort. Past ones are grouped under 멘토 이력.
+  const activeCohort = await prisma.cohort.findFirst({
+    where: { isActive: true },
+    select: { id: true },
+  });
+  const isCurrentMentee = (m: (typeof mentees)[number]) =>
+    m.cohortId === activeCohort?.id && !isEnded(m.endDate) && !m.withdrawnAt;
+  const currentMentees = mentees.filter(isCurrentMentee);
+  const pastMentees = mentees
+    .filter((m) => !isCurrentMentee(m))
+    .sort(
+      (a, b) =>
+        (b.cohort?.label ?? "").localeCompare(a.cohort?.label ?? "", "ko") ||
+        a.name.localeCompare(b.name, "ko")
+    );
 
   return (
     <main className="container">
@@ -134,14 +152,14 @@ export default async function MePage() {
       )}
 
       <div className="card card-pad section">
-        <h2 className="section-title">{t("내 담당 인턴 ({n})", { n: mentees.length })}</h2>
-        {mentees.length === 0 ? (
+        <h2 className="section-title">{t("내 담당 인턴 ({n})", { n: currentMentees.length })}</h2>
+        {currentMentees.length === 0 ? (
           <div className="empty">
             {t("아직 담당 인턴이 없습니다. 인턴이 멘토 이름에 “{name}”을(를) 입력하면 여기에 자동으로 표시됩니다.", { name: user.name })}
           </div>
         ) : (
           <div className="mentee-list">
-            {mentees.map((m) => {
+            {currentMentees.map((m) => {
               const ended = isEnded(m.endDate);
               return (
                 <Link key={m.id} href={`/interns/${m.id}?back=${encodeURIComponent("/me")}`} className="mentee-row">
@@ -163,6 +181,30 @@ export default async function MePage() {
           </div>
         )}
       </div>
+
+      {pastMentees.length > 0 && (
+        <div className="card card-pad section">
+          <h2 className="section-title">{t("멘토 이력 ({n})", { n: pastMentees.length })}</h2>
+          <p className="muted" style={{ fontSize: 12.5, marginTop: -4, marginBottom: 12 }}>
+            {t("이전에 담당했던 인턴이에요.")}
+          </p>
+          <div className="mentee-list">
+            {pastMentees.map((m) => (
+              <Link key={m.id} href={`/interns/${m.id}?back=${encodeURIComponent("/me")}`} className="mentee-row">
+                <Avatar name={m.name} photoUrl={m.photoUrl} size={36} />
+                <div className="mentee-info">
+                  <span className="mentee-name">{m.name}</span>
+                  <span className="meta-line">
+                    {m.cohort?.label ?? t("기수 미지정")}
+                    {m.teams.length ? ` · ${m.teams.join(" · ")}` : ""}
+                  </span>
+                </div>
+                <span className="ended-tag">{t("인턴 종료")}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Register intern names (works before they sign up) */}
       <div className="card card-pad section">

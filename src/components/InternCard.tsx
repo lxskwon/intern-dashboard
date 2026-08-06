@@ -28,6 +28,9 @@ export type CardIntern = {
   check?: CheckState;
   mentorName: string | null;
   ended: boolean;
+  // Whether to dim the card. Ended interns are dimmed only in the active-기수
+  // view; in 전체 기수 / past-cohort views the 인턴 종료 pill suffices.
+  dim?: boolean;
   away: boolean;
   withdrawn?: boolean;
   internLead?: boolean;
@@ -112,9 +115,15 @@ export async function InternCard({
       ? `${fmtShort(intern.startDate, locale)} – ${fmtShort(intern.endDate, locale)}`
       : t("미설정");
 
+  // Grid card: a long 본부 name + the 기수 pill would wrap to a 3rd line, so for
+  // long team names put the pill up on the name line; short ones keep it inline
+  // beside the team. Either way the header stays two lines.
+  const teamText = intern.teams.length ? intern.teams.join(" · ") : t("팀 없음");
+  const longTeam = teamText.length > 10;
+
   if (variant === "list") {
     return (
-      <div className={`intern-row${intern.ended ? " is-ended" : ""}`}>
+      <div className={`intern-row${intern.dim ? " is-ended" : ""}`}>
         <div className="intern-row-main">
           <Avatar name={intern.name} photoUrl={intern.photoUrl} size={40} />
           <div className="intern-row-id">
@@ -141,7 +150,7 @@ export async function InternCard({
   }
 
   return (
-    <div className={`intern-card${intern.ended ? " is-ended" : ""}`}>
+    <div className={`intern-card${intern.dim ? " is-ended" : ""}`}>
       <div className="intern-card-top">
         <Avatar name={intern.name} photoUrl={intern.photoUrl} size={52} />
         <div style={{ minWidth: 0, flex: 1 }}>
@@ -152,10 +161,11 @@ export async function InternCard({
             {intern.withdrawn && <span className="withdrawn-tag">{t("탈퇴")}</span>}
             {intern.internLead && <span className="lead-tag">{t("인턴 대표")}</span>}
             {intern.adminNote && <AdminNoteBadge note={intern.adminNote} />}
+            {intern.cohortLabel && longTeam && <span className="cohort-tag">{intern.cohortLabel}</span>}
           </div>
           <div className="meta-line">
-            {intern.teams.length ? intern.teams.join(" · ") : t("팀 없음")}
-            {intern.cohortLabel && <span className="cohort-tag">{intern.cohortLabel}</span>}
+            {teamText}
+            {intern.cohortLabel && !longTeam && <span className="cohort-tag">{intern.cohortLabel}</span>}
           </div>
         </div>
         <Status intern={intern} />

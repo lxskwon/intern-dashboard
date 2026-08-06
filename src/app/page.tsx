@@ -133,6 +133,11 @@ export default async function DashboardPage({
   const now = Date.now();
   const cards: CardIntern[] = rows.map((i) => {
     const ended = isEnded(i.endDate);
+    // Dim a finished intern's card ONLY when viewing the active 기수 — there it
+    // distinguishes 인턴 종료 from ongoing. In 전체 기수 or a past-cohort view the
+    // 인턴 종료 pill already tells the story, so keep cards un-dimmed (so the 기수
+    // pill reads clearly).
+    const dim = ended && selectedCohort === activeCohort?.id;
     // Combine mentors the intern listed with any mentor who claimed them by name.
     const claimed = claimMap.get(i.name.toLowerCase()) ?? [];
     const mentors = [...i.mentorNames];
@@ -153,6 +158,7 @@ export default async function DashboardPage({
       // it's redundant with the active filter.
       cohortLabel: selectedCohort === "all" ? i.cohort?.label ?? null : null,
       ended,
+      dim,
       withdrawn: !!i.withdrawnAt,
       internLead: i.internLead,
       away: !ended && isCurrentlyAway(i.unavailabilities.filter((u) => u.kind !== "ADJUST")),
