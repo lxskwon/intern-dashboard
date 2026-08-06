@@ -135,7 +135,8 @@ export function ReportPhotos({ images }: { images: Img[] }) {
                 }
                 return (
                   <div key={ti} className="report-photo-stack" style={{ width: tileW, height: H }}>
-                    {t.imgs.map((im) => (
+                    {/* Reverse so the later strip sits on top and the first below. */}
+                    {[...t.imgs].reverse().map((im) => (
                       <img key={im.id} className="report-photo" src={im.url} alt={im.name ?? ""} style={{ width: tileW, height: tileW / asp[im.id] }} />
                     ))}
                   </div>
