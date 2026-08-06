@@ -153,6 +153,17 @@ export const EN: Record<string, string> = {
 
   // ---- task detail ----
   "← {name} 카드로": "← Back to {name}'s Card",
+  "자동 퇴근": "Auto check-out",
+  "무기록 자동 퇴근": "Auto check-out, no journal",
+  "정상 퇴근 — 퇴근 버튼을 눌렀어요 (기록 포함).": "Normal check-out — pressed the 퇴근 button (with a journal).",
+  "기록은 있지만 퇴근 버튼을 안 눌러 설정 퇴근 시간 {n}분 후 자동 처리됐어요.":
+    "Had a journal but didn't press 퇴근, so it auto-closed {n} min after the scheduled end.",
+  "기록도 없고 퇴근도 안 눌러 자동 처리됐어요. 확인이 필요해요.":
+    "No journal and no 퇴근 press — auto-closed. Needs a look.",
+  "최근 근무일 중 {n}일을 기록 없이 자동 퇴근했어요. 기록을 남기고 퇴근을 눌러주세요.":
+    "{n} recent workdays were auto-closed with no journal. Please add a journal and press 퇴근.",
+  "{date} 기록 없이 자동 퇴근되었어요. 기록을 남기고 퇴근을 눌러주세요.":
+    "{date} was auto-closed with no journal. Please add a journal and press 퇴근.",
   "담당 인턴": "Assigned Intern",
   "부여일": "Assigned Date",
   "배정": "Assigned By",

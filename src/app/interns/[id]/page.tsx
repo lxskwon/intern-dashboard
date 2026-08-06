@@ -15,8 +15,10 @@ import {
   isCurrentlyAway,
   ddayInfo,
   seoulTodayUTCDate,
+  dateKeyUTC,
+  todayKey,
 } from "@/lib/format";
-import { computeWorkStatus, todayAdjustBounds, formatDays } from "@/lib/constants";
+import { computeWorkStatus, todayAdjustBounds, formatDays, classifyCheckout } from "@/lib/constants";
 import { Avatar } from "@/components/Avatar";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ProfileForm } from "@/components/ProfileForm";
@@ -65,6 +67,9 @@ export default async function InternDetailPage({
   const fmtShort = (d: Date | string | null | undefined) => fmtShortI(d, locale);
 
   const { id } = await params;
+  // Look back ~3 weeks of check-ins (for the 무기록 자동 퇴근 nudge).
+  const recentSince = new Date(seoulTodayUTCDate());
+  recentSince.setUTCDate(recentSince.getUTCDate() - 21);
   const sp = await searchParams;
   const backParam = Array.isArray(sp.back) ? sp.back[0] : sp.back;
   const back = resolveBack(t, backParam, {
@@ -84,7 +89,7 @@ export default async function InternDetailPage({
       },
       unavailabilities: { orderBy: { startDate: "asc" } },
       workSchedules: { orderBy: { createdAt: "asc" } },
-      checkIns: { where: { date: seoulTodayUTCDate() }, take: 1 },
+      checkIns: { where: { date: { gte: recentSince } }, orderBy: { date: "desc" } },
       comments: { orderBy: { createdAt: "asc" } },
       logEntries: {
         include: {
@@ -141,8 +146,16 @@ export default async function InternDetailPage({
   const adjusts = intern.unavailabilities.filter((u) => u.kind === "ADJUST");
   const away = !ended && isCurrentlyAway(absences);
   const workBounds = todayAdjustBounds(intern.unavailabilities);
-  const todayCheck = intern.checkIns[0] ?? null;
+  const todayCheck = intern.checkIns.find((c) => dateKeyUTC(c.date) === todayKey()) ?? null;
   const workKey = computeWorkStatus(intern.workSchedules, workBounds, todayCheck);
+
+  // 무기록 자동 퇴근 nudge: days the intern checked in, never pressed 퇴근, and
+  // wrote no 기록. Shown to the intern (and admins); clears once a 기록 is added.
+  const journalDays = new Set(intern.logEntries.map((e) => dateKeyUTC(e.entryDate)));
+  const noJournalDays = intern.checkIns.filter(
+    (c) => classifyCheckout(c, intern.workSchedules, journalDays.has(dateKeyUTC(c.date))) === "AUTO_NOJOURNAL"
+  );
+  const showNoJournalNotice = (mine || isAdminViewer) && noJournalDays.length > 0;
 
   // Options for linking a log entry to one of this intern's tasks.
   const taskOptions = intern.assignments.map((a) => ({ id: a.id, title: a.title }));
@@ -177,6 +190,19 @@ export default async function InternDetailPage({
       <p style={{ marginTop: 0 }}>
         <Link href={back.href}>{back.label}</Link>
       </p>
+
+      {showNoJournalNotice && (
+        <div className="nojournal-memo">
+          ⚠️{" "}
+          {noJournalDays.length > 1
+            ? t("최근 근무일 중 {n}일을 기록 없이 자동 퇴근했어요. 기록을 남기고 퇴근을 눌러주세요.", {
+                n: noJournalDays.length,
+              })
+            : t("{date} 기록 없이 자동 퇴근되었어요. 기록을 남기고 퇴근을 눌러주세요.", {
+                date: fmtShort(noJournalDays[0].date),
+              })}
+        </div>
+      )}
 
       <section className="hero" style={{ borderTop: `5px solid ${heroBorder}` }}>
         <Avatar name={intern.name} photoUrl={intern.photoUrl} size={84} />

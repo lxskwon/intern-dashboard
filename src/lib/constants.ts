@@ -25,6 +25,10 @@ export const WORK_STATUS: Record<WorkStatusKey, WorkStatusMeta> = {
 
 export type Schedule = { days: string; startTime: string; endTime: string };
 
+// If someone forgets to press 퇴근, they stay 근무중 until this many minutes past
+// their scheduled end time, then auto-퇴근 (so no one is left 근무중 all night).
+export const AUTO_OFF_GRACE_MIN = 30;
+
 function toMinutes(t: string): number | null {
   const [h, m] = t.split(":").map(Number);
   if (Number.isNaN(h) || Number.isNaN(m)) return null;
@@ -34,6 +38,20 @@ function toMinutes(t: string): number | null {
 const SEOUL_WEEKDAY: Record<string, number> = {
   Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
 };
+
+/** Latest scheduled end-of-day (minutes since midnight) for a given weekday,
+ *  or null when there's no schedule that day. */
+export function scheduleEndForWeekday(
+  schedules: Schedule[] | null | undefined,
+  weekday: number
+): number | null {
+  if (!schedules) return null;
+  const ends = schedules
+    .filter((s) => s.days.split(",").map((d) => Number(d.trim())).includes(weekday))
+    .map((s) => toMinutes(s.endTime))
+    .filter((m): m is number => m !== null);
+  return ends.length ? Math.max(...ends) : null;
+}
 
 /** Current weekday + minutes-of-day in Korea time (independent of server TZ). */
 function nowInSeoul(): { day: number; minutes: number } {
@@ -110,8 +128,13 @@ export function computeWorkStatus(
   // 이른 퇴근: an approved early-leave means they're off once its time passes.
   if (bounds?.earlyUntil != null && cur >= bounds.earlyUntil) return "OFF";
 
-  // Button decides 근무중 / 퇴근.
-  if (check?.inAt && !check?.outAt) return "WORKING";
+  // Button decides 근무중 / 퇴근 — but a forgotten 퇴근 auto-closes AUTO_OFF_GRACE_MIN
+  // after today's scheduled end, so no one is left 근무중 all night.
+  if (check?.inAt && !check?.outAt) {
+    const end = scheduleEndForWeekday(schedules, day);
+    if (end !== null && cur >= end + AUTO_OFF_GRACE_MIN) return "OFF";
+    return "WORKING";
+  }
   if (check?.outAt) return "OFF";
 
   // Not checked in today.
@@ -134,6 +157,40 @@ export function computeWorkStatus(
   }
 
   return "OFF";
+}
+
+export type CheckoutKind = "OPEN" | "MANUAL" | "AUTO" | "AUTO_NOJOURNAL";
+
+/** Is the given day past its auto-퇴근 moment (scheduled end + grace)? Past days
+ *  are always closed; a day with no schedule never auto-closes on its own, so
+ *  today-with-no-schedule counts as still open. */
+function isDayAutoClosed(date: Date | string, schedules: Schedule[] | null | undefined): boolean {
+  const dk = dateKeyUTC(date);
+  const tk = todayKey();
+  if (dk < tk) return true;
+  if (dk > tk) return false;
+  const { day, minutes: cur } = nowInSeoul();
+  const end = scheduleEndForWeekday(schedules, day);
+  if (end === null) return false;
+  return cur >= end + AUTO_OFF_GRACE_MIN;
+}
+
+/**
+ * Classify how a day's check-in ended — used by 출퇴근 관리 and the intern nudge:
+ *  - MANUAL: pressed 퇴근 (which requires a 기록) → 정상 퇴근 (green).
+ *  - OPEN: checked in, still within today's window (근무중), not yet auto-closed.
+ *  - AUTO: forgot to press 퇴근, but a 기록 exists → auto-퇴근 (yellow), minor.
+ *  - AUTO_NOJOURNAL: forgot 퇴근 AND wrote no 기록 that day → flagged (red).
+ */
+export function classifyCheckout(
+  check: { inAt: Date | string | null; outAt: Date | string | null; date: Date | string },
+  schedules: Schedule[] | null | undefined,
+  hasJournal: boolean
+): CheckoutKind {
+  if (!check.inAt) return "OPEN";
+  if (check.outAt) return "MANUAL";
+  if (!isDayAutoClosed(check.date, schedules)) return "OPEN";
+  return hasJournal ? "AUTO" : "AUTO_NOJOURNAL";
 }
 
 export const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];

@@ -2150,6 +2150,55 @@ th {
   color: #b91c1c;
   font-weight: 700;
 }
+/* Checkout-kind chips (translucent tint + same-hue text). */
+.attend-chip {
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+.attend-chip.manual {
+  background: #dcfce7;
+  color: #15803d;
+}
+.attend-chip.auto {
+  background: #fef08a;
+  color: #a16207;
+}
+.attend-chip.nojournal {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+.attend-chip.open {
+  background: #e0e7ff;
+  color: #4338ca;
+}
+/* Legend explaining the three checkout keys. */
+.attend-legend {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px 12px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.attend-legend .legend-desc {
+  font-size: 13px;
+  color: var(--muted);
+}
+/* Personal nudge on an intern's card when they had a 무기록 자동 퇴근. */
+.nojournal-memo {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #92400e;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 13.5px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
 
 .lead-tag {
   display: inline-block;

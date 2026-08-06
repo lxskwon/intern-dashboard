@@ -5,7 +5,7 @@ import { getCurrentUser } from "@/lib/session";
 import { isAdminOrBoss } from "@/lib/permissions";
 import { getT, getLocale } from "@/lib/i18n-server";
 import { isEnded, fmtShort, dateKeyUTC, todayKey } from "@/lib/format";
-import { WEEKDAYS } from "@/lib/constants";
+import { WEEKDAYS, classifyCheckout, AUTO_OFF_GRACE_MIN } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 
@@ -52,8 +52,10 @@ export default async function AttendancePage() {
       teams: true,
       startDate: true,
       endDate: true,
-      workSchedules: { select: { days: true, startTime: true } },
+      workSchedules: { select: { days: true, startTime: true, endTime: true } },
       checkIns: { orderBy: { date: "desc" }, select: { date: true, inAt: true, outAt: true } },
+      // 기록 dates — used to tell 자동 퇴근 (had a 기록) from 무기록 자동 퇴근.
+      logEntries: { select: { entryDate: true } },
       // Approved 늦은 출근 adjustments push that day's on-time threshold later.
       unavailabilities: {
         where: { kind: "ADJUST", adjustType: "LATE", status: "APPROVED" },
@@ -86,6 +88,7 @@ export default async function AttendancePage() {
       if (m !== null) lateByDate.set(dateKeyUTC(u.startDate), m);
     }
 
+    const journalDays = new Set(i.logEntries.map((e) => dateKeyUTC(e.entryDate)));
     const dayRows = i.checkIns.map((c) => {
       const wd = new Date(c.date).getUTCDay();
       const inMin = c.inAt ? seoulMinutes(c.inAt) : null;
@@ -94,7 +97,8 @@ export default async function AttendancePage() {
       // normal scheduled start.
       const threshold = lateByDate.has(dk) ? lateByDate.get(dk)! : startByWd.get(wd);
       const late = inMin !== null && threshold !== undefined && inMin > threshold;
-      return { date: c.date, wd, inAt: c.inAt, outAt: c.outAt, late };
+      const kind = classifyCheckout(c, i.workSchedules, journalDays.has(dk));
+      return { date: c.date, wd, inAt: c.inAt, outAt: c.outAt, late, kind };
     });
 
     // 출석률: scheduled days attended ÷ scheduled days expected. Measured only
@@ -135,6 +139,19 @@ export default async function AttendancePage() {
         {t("출퇴근 관리")}
       </h1>
       <p className="page-sub">{t("인턴별 출근·퇴근 기록과 출석률을 확인할 수 있어요. 지각은 빨간색으로 표시됩니다.")}</p>
+
+      <div className="card card-pad attend-legend">
+        <span className="attend-chip manual">{t("퇴근")}</span>
+        <span className="legend-desc">{t("정상 퇴근 — 퇴근 버튼을 눌렀어요 (기록 포함).")}</span>
+        <span className="attend-chip auto">{t("자동 퇴근")}</span>
+        <span className="legend-desc">
+          {t("기록은 있지만 퇴근 버튼을 안 눌러 설정 퇴근 시간 {n}분 후 자동 처리됐어요.", {
+            n: AUTO_OFF_GRACE_MIN,
+          })}
+        </span>
+        <span className="attend-chip nojournal">{t("무기록 자동 퇴근")}</span>
+        <span className="legend-desc">{t("기록도 없고 퇴근도 안 눌러 자동 처리됐어요. 확인이 필요해요.")}</span>
+      </div>
 
       <div className="card card-pad section">
         <div className="stat-row">
@@ -182,10 +199,19 @@ export default async function AttendancePage() {
                         ) : (
                           <span className="muted">{t("출근 기록 없음")}</span>
                         )}
-                        {r.outAt && (
-                          <span className="attend-out">
+                        {r.kind === "MANUAL" && r.outAt && (
+                          <span className="attend-chip manual">
                             {seoulClock(r.outAt)} {t("퇴근")}
                           </span>
+                        )}
+                        {r.kind === "AUTO" && (
+                          <span className="attend-chip auto">{t("자동 퇴근")}</span>
+                        )}
+                        {r.kind === "AUTO_NOJOURNAL" && (
+                          <span className="attend-chip nojournal">{t("무기록 자동 퇴근")}</span>
+                        )}
+                        {r.kind === "OPEN" && r.inAt && (
+                          <span className="attend-chip open">{t("근무중")}</span>
                         )}
                       </span>
                     </div>
