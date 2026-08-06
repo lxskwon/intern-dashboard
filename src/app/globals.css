@@ -2188,6 +2188,11 @@ th {
   font-size: 13px;
   color: var(--muted);
 }
+/* Equal-width legend chips (match the widest) with centered text. */
+.attend-legend .attend-chip {
+  width: 100%;
+  justify-content: center;
+}
 /* Personal nudge on an intern's card when they had a 무기록 자동 퇴근. */
 .nojournal-memo {
   background: #fffbeb;
